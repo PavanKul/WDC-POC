@@ -94,7 +94,7 @@ struct GenericPlatformMath
 	 * @return index of msb
 	 */
 	template<typename IntT>
-	static CONSTEXPR FORCE_INLINE uint32 getP2Index(IntT n, uint32 bits = sizeof(IntT) * 8)
+	static CONSTEXPR  uint32 getP2Index(IntT n, uint32 bits = sizeof(IntT) * 8)
 	{
 		if (bits == 1) return 0;
 
@@ -125,7 +125,7 @@ struct GenericPlatformMath
 	 * @return next p2
 	 */
 	template<typename IntT>
-	static CONSTEXPR FORCE_INLINE IntT getNextP2(IntT n)
+	static CONSTEXPR IntT getNextP2(IntT n)
 	{
 		return 1 << getNextP2Index(n);
 	}
@@ -138,7 +138,7 @@ struct GenericPlatformMath
 	 * @{
 	 */
 	template<typename IntT>
-	static CONSTEXPR FORCE_INLINE IntT shiftRotateRight(IntT n, uint32 k)
+	static CONSTEXPR  IntT shiftRotateRight(IntT n, uint32 k)
 	{
 		return (n >> k) | (n << (sizeof(IntT) * 8 - k));
 	}

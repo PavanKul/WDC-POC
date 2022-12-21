@@ -78,7 +78,7 @@ public:
 	/// @}
 
 	/// Get root of this tree
-	FORCE_INLINE BinaryNode * getRoot()
+	BinaryNode * getRoot()
 	{
 		return parent ? parent->getRoot() : this;
 	}
@@ -114,13 +114,13 @@ public:
 	}
 
 	/// Get subtree leftmost node (contains min value)
-	FORCE_INLINE BinaryNode * getMin()
+	BinaryNode * getMin()
 	{
 		return left == nullptr ? this : left->getMin();
 	}
 
 	/// Get subtree rightmost node (contains max value)
-	FORCE_INLINE BinaryNode * getMax()
+	BinaryNode * getMax()
 	{
 		return right == nullptr ? this : right->getMax();
 	}
@@ -132,7 +132,7 @@ public:
 	 * @return node if found, nullptr otherwise
 	 */
 	/// Search begins from this node
-	FORCE_INLINE BinaryNode * find(typename ConstRef<T>::Type search)
+	BinaryNode * find(typename ConstRef<T>::Type search)
 	{
 		// Compare search key and node key
 		const int32 compare = CompareT()(search, data);
@@ -147,21 +147,21 @@ public:
 	
 protected:
 	/// Set node as left child
-	FORCE_INLINE BinaryNode * setLeftChild(BinaryNode * node)
+	BinaryNode * setLeftChild(BinaryNode * node)
 	{
 		if (node) node->parent = this;
 		return (left = node);
 	}
 
 	/// Set node as right child
-	FORCE_INLINE BinaryNode * setRightChild(BinaryNode * node)
+	BinaryNode * setRightChild(BinaryNode * node)
 	{
 		if (node) node->parent = this;
 		return (right = node);
 	}
 
 	/// Set previous node
-	FORCE_INLINE BinaryNode * setPrevNode(BinaryNode * node)
+	BinaryNode * setPrevNode(BinaryNode * node)
 	{
 		if (prev != nullptr)
 			prev->next = node;
@@ -174,7 +174,7 @@ protected:
 	}
 
 	/// Set next node
-	FORCE_INLINE BinaryNode * setNextNode(BinaryNode * node)
+	BinaryNode * setNextNode(BinaryNode * node)
 	{
 		if (next != nullptr)
 			next->prev = node;
@@ -199,7 +199,7 @@ public:
 	 * @return inserted node
 	 * @{
 	 */
-	FORCE_INLINE BinaryNode * insert(BinaryNode * node)
+	BinaryNode * insert(BinaryNode * node)
 	{
 		if (CompareT()(node->data, data) < 0)
 			return left
@@ -222,7 +222,7 @@ public:
 	}
 	
 	/// If node already exists, don't reinsert it
-	FORCE_INLINE BinaryNode * insertUnique(BinaryNode * node)
+	BinaryNode * insertUnique(BinaryNode * node)
 	{
 		// Compare inserting node data against node data
 		int32 compare = CompareT()(node->data, data);
