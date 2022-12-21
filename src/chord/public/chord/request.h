@@ -3,6 +3,8 @@
 #include "chord_fwd.h"
 #include "templates/reference.h"
 
+#define MAX_FILE_SIZE 20480 // 20 KB
+
 namespace Chord
 {
 	/**
@@ -19,7 +21,8 @@ namespace Chord
 			LOOKUP,
 			NOTIFY,
 			LEAVE,
-			CHECK
+			CHECK,
+			WRITE
 		};
 		
 		/// Request type
@@ -49,7 +52,20 @@ namespace Chord
 		/// Request hop count
 		uint32 hopCount : 16;
 
+		/// params required for write
+		char file_buff[MAX_FILE_SIZE+2];
+	        size_t buff_size; //TODO:this should be removed later andd add in socket itself
+	        uint32 buff_key;
+
 	public:
+		///setting the file buffer
+		void setBuff(uint32 key, char* buff, size_t size)
+	        {
+	            	buff_size = size;
+		    	buff_key = key;
+			memset(file_buff, '0', buff_size);
+			memcpy (file_buff, buff, size);
+	        }
 		/// Returns whether request is expired
 		FORCE_INLINE bool isExpired() const
 		{

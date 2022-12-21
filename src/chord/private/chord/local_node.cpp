@@ -1,6 +1,8 @@
 #include "chord/local_node.h"
 #include "crypto/sha1.h"
+#include <fstream>
 
+using namespace std;
 namespace Chord
 {
 	LocalNode::LocalNode()
@@ -84,6 +86,27 @@ namespace Chord
 
 		return out;
 	}
+
+        void LocalNode::write(uint32 key, char* buff, size_t size)
+        {
+    
+	    	//find receipient
+            	auto dest  = lookup(key);
+		auto dest_node = dest.get();
+		printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+            	//Request req{Request::WRITE};
+	    	Request req = makeRequest(
+			Request::WRITE,
+			dest_node
+			//NodeInfo{(uint32)-1, dest.addr}
+		);
+            	req.sender = self.addr;
+            	req.setSrc<NodeInfo>(self);	
+	
+	    	//copy buff to req.buff 
+	    	req.setBuff(key, buff, size);
+            	socket.write<Request>(req, req.recipient);
+        }
 
 	bool LocalNode::join(const Ipv4 & peer)
 	{
@@ -195,7 +218,7 @@ namespace Chord
 					// Update successor
 					setSuccessor(target);
 
-					printf("LOG: new successor is %s\n", *successor.getInfoString());
+					//printf("LOG: new successor is %s\n", *successor.getInfoString());
 				}
 			}
 		);
@@ -219,7 +242,7 @@ namespace Chord
 			// Update finger
 			setFinger(successor, i);
 			
-			printf("LOG: updating finger #%u with %s\n", i, *fingers[i].getInfoString());
+			//printf("LOG: updating finger #%u with %s\n", i, *fingers[i].getInfoString());
 		}
 		else
 		{
@@ -234,7 +257,7 @@ namespace Chord
 					// Update finger
 					setFinger(req.getDst<NodeInfo>(), i);
 
-					printf("LOG: updating finger #%u with %s\n", i, *fingers[i].getInfoString());
+					//printf("LOG: updating finger #%u with %s\n", i, *fingers[i].getInfoString());
 				}
 				// * checkPeer(next) on error
 			);
@@ -270,7 +293,7 @@ namespace Chord
 					
 					setSuccessor(req.getDst<NodeInfo>());
 
-					printf("LOG: new successor is %s\n", *successor.getInfoString());
+					//printf("LOG: new successor is %s\n", *successor.getInfoString());
 				}
 			);
 			req.setDst<uint32>(id + 1);
@@ -330,7 +353,7 @@ namespace Chord
 			}
 		}
 
-		printf("LOG: %llu pending requests\n", callbacks.getCount());
+		//printf("LOG: %llu pending requests\n", callbacks.getCount());
 	}
 
 	void LocalNode::handleRequest(const Request & req)
@@ -339,34 +362,39 @@ namespace Chord
 		{
 	#if BUILD_DEBUG
 		case Request::PING:
-			printf("LOG: received PING from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			//printf("LOG: received PING from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			break;
 	#endif
 
 		case Request::REPLY:
-			printf("LOG: received REPLY from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			//printf("LOG: received REPLY from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			handleReply(req);
 			break;
 
 		case Request::LOOKUP:
-			printf("LOG: received LOOKUP from %s with id 0x%08x and hop count = %u\n", *getIpString(req.sender), req.id, req.hopCount);
+			//printf("LOG: received LOOKUP from %s with id 0x%08x and hop count = %u\n", *getIpString(req.sender), req.id, req.hopCount);
 			handleLookup(req);
 			break;
 
 		case Request::NOTIFY:
-			printf("LOG: received NOTIFY from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			//printf("LOG: received NOTIFY from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			handleNotify(req);
 			break;
 
 		case Request::LEAVE:
-			printf("LOG: received LEAVE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			//printf("LOG: received LEAVE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			handleLeave(req);
 			break;
 		
 		case Request::CHECK:
-			printf("LOG: received CHECK from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			//printf("LOG: received CHECK from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			handleCheck(req);
 			break;
+		
+		case Request::WRITE:
+            		printf("LOG: received WRITE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+            		handleWrite(req);
+            		break;
 		
 		default:
 			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
@@ -459,7 +487,7 @@ namespace Chord
 			// Update predecessor
 			setPredecessor(src);
 
-			printf("LOG: new predecessor is %s\n", *predecessor.getInfoString());
+			//printf("LOG: new predecessor is %s\n", *predecessor.getInfoString());
 		}
 	}
 
@@ -483,4 +511,20 @@ namespace Chord
 
 		// TODO: chain checks along a lookup path
 	}
+
+	void LocalNode::handleWrite(const Request & req)
+    	{
+        	Request sender{req};
+        	int res = 0, len = 1024, recvFileSize = 0, recBuffSize = sizeof(int);
+        	char *readBuf = NULL;
+        	FILE *fp = NULL;
+		char filepath[MAX_FILE_NAME];
+		
+		strcpy(filepath, "/store/");
+		string filename = to_string(req.buff_key);
+		strcat(filepath, filename.c_str());
+		ofstream fout(filepath, ios::out | ios::binary);
+    		fout.write (&req.file_buff[0], req.buff_size);
+		fout.close();
+    	}
 } // namespace Chord
