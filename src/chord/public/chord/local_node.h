@@ -7,6 +7,8 @@
 #include "request.h"
 #include "math/uuid_generator.h"
 
+#define MAX_FILE_NAME 296
+
 namespace Chord
 {
 	/**
@@ -145,6 +147,14 @@ namespace Chord
 		 */
 		Promise<NodeInfo> lookup(uint32 key);
 
+		 /**
+                 * write will send a write request to destination 
+                 *
+                 * @param [in] a  key, buffer & buffer size
+                 * @return void
+                 */
+                 void write(uint32 key, char* buff, size_t size);
+
 		/**
 		 * Leave chord ring
 		 */
@@ -200,6 +210,7 @@ namespace Chord
 		void handleNotify(const Request & req);
 		void handleLeave(const Request & req);
 		void handleCheck(const Request & req);
+		void handleWrite(const Request & req);
 		/// @}
 		
 	public:
