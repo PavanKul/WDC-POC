@@ -6,6 +6,7 @@
 #include "types.h"
 #include "request.h"
 #include "math/uuid_generator.h"
+#include "chord/Logger.h"
 
 namespace Chord
 {
@@ -18,6 +19,7 @@ namespace Chord
 	{
 		friend ReceiveTask;
 		friend UpdateTask;
+		friend Logger;
 
 	protected:
 		union
@@ -65,6 +67,7 @@ namespace Chord
 	public:
 		/// Default constructor
 		LocalNode();
+		Logger* pLogger = Logger::getInstance();
 		
 		/// Get node public address
 		FORCE_INLINE const Ipv4 & getPublicAddress() const

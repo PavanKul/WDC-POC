@@ -8,7 +8,6 @@
 //////////////////////////////////////////////////
 // Chord forwards
 //////////////////////////////////////////////////
-
 namespace Chord
 {
 	using namespace Net;
@@ -16,6 +15,7 @@ namespace Chord
 	class LocalNode;
 	class ReceiveTask;
 	class UpdateTask;
+	class Logger;
 } // namespace Chord
 
 #include "types.h"

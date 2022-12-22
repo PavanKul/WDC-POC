@@ -31,6 +31,7 @@ int32 main(int32 argc, char ** argv)
 
 		Net::parseIpString(peer, *str);
 	})) localNode.join(peer);
+	
 
 	auto receiver = RunnableThread::create(new Chord::ReceiveTask(&localNode), "Receiver");
 	auto updater = RunnableThread::create(new Chord::UpdateTask(&localNode), "Updater");
