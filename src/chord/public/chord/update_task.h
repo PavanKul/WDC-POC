@@ -1,7 +1,6 @@
 #pragma once
 
 #include "hal/runnable.h"
-
 #include "misc/time.h"
 #include "chord_fwd.h"
 

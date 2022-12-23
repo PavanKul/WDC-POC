@@ -11,6 +11,6 @@ namespace Chord
 	class UpdateTask;
 	class Logger;
 } // namespace Chord
-
 #include "types.h"
 #include "request.h"
+

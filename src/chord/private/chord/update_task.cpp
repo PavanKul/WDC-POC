@@ -1,6 +1,5 @@
 #include "chord/update_task.h"
 #include "chord/local_node.h"
-#include "chord/Logger.h"
 
 namespace Chord
 {

@@ -23,16 +23,13 @@ int32 main(int32 argc, char ** argv)
 	Memory::createGMalloc();
 	gThreadManager = new ThreadManager();
 	gCommandLine = new CommandLine(argc, argv);
-	
 	Chord::LocalNode localNode;
-
 	Net::Ipv4 peer;
 	if (CommandLine::get().getValue("input", peer, [](const String & str, Net::Ipv4 & peer)
 	{
 		Net::parseIpString(peer, *str);
 	})) 	localNode.join(peer);
 	
-
 	auto receiver = RunnableThread::create(new Chord::ReceiveTask(&localNode), "Receiver");
 	auto updater = RunnableThread::create(new Chord::UpdateTask(&localNode), "Updater");
 

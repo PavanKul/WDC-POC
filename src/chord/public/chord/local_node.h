@@ -1,7 +1,6 @@
 #pragma once
 
 #include "async/async.h"
-
 #include "chord_fwd.h"
 #include "types.h"
 #include "request.h"
