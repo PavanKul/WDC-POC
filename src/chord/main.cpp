@@ -27,10 +27,10 @@ int32 main(int32 argc, char ** argv)
 	Chord::LocalNode localNode;
 
 	Net::Ipv4 peer;
-	if (CommandLine::get().getValue("input", peer, [](const String & str, Net::Ipv4 & peer){
-
+	if (CommandLine::get().getValue("input", peer, [](const String & str, Net::Ipv4 & peer)
+	{
 		Net::parseIpString(peer, *str);
-	})) localNode.join(peer);
+	})) 	localNode.join(peer);
 	
 
 	auto receiver = RunnableThread::create(new Chord::ReceiveTask(&localNode), "Receiver");
@@ -46,7 +46,6 @@ int32 main(int32 argc, char ** argv)
 			localNode.printInfo();
 			break;
 		}
-
 		case 'l':
 		{
 			uint32 key;
@@ -56,17 +55,16 @@ int32 main(int32 argc, char ** argv)
 			printf("RESULT: found key 0x%08x @ [%s]\n", key, *peer.get().getInfoString());
 			break;
 		}
-		
 		case 'q':
 		{
 			localNode.leave();
 			break;
 		}
-
 		default:
 			break;
 		}
-	} while(c != 'q');
+	} 
+	while(c != 'q');
 
 	return 0;
 }

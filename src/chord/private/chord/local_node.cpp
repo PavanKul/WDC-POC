@@ -4,19 +4,17 @@
 
 namespace Chord
 {
-LocalNode::LocalNode()
-				: self{}
-, fingers{}
-, predecessor{}
-, socket{}
-, requestIdGenerator{}
-, callbacks{}
-, nextFinger{1U}
+	LocalNode::LocalNode(): self{},
+	fingers{}, 
+	predecessor{}, 
+	socket{}, 
+	requestIdGenerator{}, 
+	callbacks{}, 
+	nextFinger{1U}
 {
 	// Initialize node
 	init();
 }
-
 
 bool LocalNode::init()
 {
@@ -47,10 +45,6 @@ bool LocalNode::init()
 		pLogger->chord_print(LOG_LEVEL_DEBUG, "Message Logged using C++ Interface, Log level: LOG_DEBUG");
 		pLogger->chord_print(LOG_LEVEL_INFO, "Message Logged using C++ Interface, Log level: LOG_INFO");
 		pLogger->chord_print(LOG_LEVEL_ERROR, "Message Logged using C++ Interface, Log level: LOG_ERROR");
-
-		
-		//pLogger->chor_print(LOG_LEVEL_DEBUG, CONSOLE, "Message Logged using C++ Interface, Log level: LOG_DEBUG");
-
 		return true;
 	}
 
@@ -116,7 +110,7 @@ bool LocalNode::join(const Ipv4 & peer)
 	successor = res.getDst<NodeInfo>();
 
 	printf("INFO: connected with successor %s\n", *successor.getInfoString());
-
+	
 	return true;
 }
 
