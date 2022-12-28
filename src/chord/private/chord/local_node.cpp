@@ -108,6 +108,23 @@ namespace Chord
             	socket.write<Request>(req, req.recipient);
         }
 
+        void LocalNode::read( uint32 key, const char* file_name)
+        {
+
+                auto dest  = lookup(key);
+                auto dest_node = dest.get();
+                printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+                Request req = makeRequest(
+                        Request::READ,
+                        dest_node);
+                req.sender = self.addr;
+                req.setSrc<NodeInfo>(self);
+                req.buff_key = key;
+                memset(req.file_name, 0, MAX_FILE_NAME_LENGTH);
+                strncpy(req.file_name, file_name, MAX_FILE_NAME_LENGTH-1);
+                socket.write<Request>(req, req.recipient);
+        }
+
 	bool LocalNode::join(const Ipv4 & peer)
 	{
 		// Join starts with a lookup request
@@ -395,6 +412,11 @@ namespace Chord
             		printf("LOG: received WRITE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
             		handleWrite(req);
             		break;
+
+                case Request::READ:
+                        printf("LOG: received READ from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+                        handleRead(req);
+                        break;
 		
 		default:
 			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
@@ -519,12 +541,53 @@ namespace Chord
         	char *readBuf = NULL;
         	FILE *fp = NULL;
 		char filepath[MAX_FILE_NAME];
-		
-		strcpy(filepath, "/store/");
-		string filename = to_string(req.buff_key);
+		string filename;
+                if (true == req.isRead)
+		{
+                       strcpy(filepath, "/store/received/");
+		       filename = req.file_name;
+
+		}
+                else
+		{
+		       strcpy(filepath, "/store/");
+		       filename = to_string(req.buff_key);
+		}
 		strcat(filepath, filename.c_str());
 		ofstream fout(filepath, ios::out | ios::binary);
     		fout.write (&req.file_buff[0], req.buff_size);
 		fout.close();
     	}
+
+        void LocalNode::handleRead(const Request & req)
+        {
+                Request res{req};
+                string file_name("/store/");
+                file_name += to_string(req.buff_key);
+                int file_size = 0;
+                ifstream fin(file_name, ios::in | ios::binary );
+                if (fin)
+                {
+                        fin.seekg(0, ios::end);
+                        file_size = fin.tellg();
+                        printf("File Size = %d", file_size);
+                        fin.seekg(0, ios::beg);
+                        if (MAX_FILE_SIZE >= file_size) {
+                                fin.read(&res.file_buff[0], file_size);
+                                res.buff_size = file_size;
+                        }
+                        else
+                        {
+                                printf("File is larger than the max allowed size\n");
+                        }
+                        fin.close();
+                }
+                else
+                {
+                        printf("File is not present in /store/\n");
+                }
+                res.isRead = true;
+                res.type = Request::WRITE; 
+                socket.write<Request>(res, res.sender);
+        }
 } // namespace Chord

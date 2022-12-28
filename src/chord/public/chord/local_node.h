@@ -155,6 +155,14 @@ namespace Chord
                  */
                  void write(uint32 key, char* buff, size_t size);
 
+                 /**
+                 * read will send a read request to destination
+                 *
+                 * @param [in] a key (corresponds to a file)
+                 * @return void
+                 */
+                 void read(uint32 key, const char* file_name);
+
 		/**
 		 * Leave chord ring
 		 */
@@ -211,6 +219,7 @@ namespace Chord
 		void handleLeave(const Request & req);
 		void handleCheck(const Request & req);
 		void handleWrite(const Request & req);
+		void handleRead(const Request & req);
 		/// @}
 		
 	public:
