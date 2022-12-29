@@ -543,7 +543,7 @@ namespace Chord
 		string filename;
                 if (true == req.isRead)
 		{
-                       strcpy(filepath, "~/Downloads/");
+                       strcpy(filepath, "/Downloads/");
 		       filename = req.file_name;
 
 		}
