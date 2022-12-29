@@ -139,6 +139,26 @@ int32 main(int32 argc, char ** argv)
 			break;
 		}
 
+		case 'r':
+		{
+			string fileName;
+			cout <<"Enter the filename: ";
+			cin>>fileName;
+			uint32 key;
+			auto it = file_map.find(fileName);
+			if(it != file_map.end())
+			{
+				key = it->second;
+				cout << "Key-value pair present : " << fileName << "->" << key << std::endl;
+				localNode.read(key, fileName.c_str());
+			}
+			else
+			{
+                                cout << "File  not present in map" << std::endl;
+			}
+			break;
+		}
+
 		case 's':
 		{
 			cout << "List of files added using this node:\n";

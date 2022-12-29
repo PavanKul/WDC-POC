@@ -4,6 +4,7 @@
 #include "templates/reference.h"
 
 #define MAX_FILE_SIZE 20480 // 20 KB
+#define MAX_FILE_NAME_LENGTH 32
 
 namespace Chord
 {
@@ -22,7 +23,8 @@ namespace Chord
 			NOTIFY,
 			LEAVE,
 			CHECK,
-			WRITE
+			WRITE,
+			READ
 		};
 		
 		/// Request type
@@ -53,9 +55,11 @@ namespace Chord
 		uint32 hopCount : 16;
 
 		/// params required for write
-		char file_buff[MAX_FILE_SIZE+2];
-	        size_t buff_size; //TODO:this should be removed later andd add in socket itself
-	        uint32 buff_key;
+                char file_buff[MAX_FILE_SIZE+2];
+                size_t buff_size; //TODO:this should be removed later andd add in socket itself
+                uint32 buff_key;
+                char file_name[MAX_FILE_NAME_LENGTH];
+                bool isRead = false;
 
 	public:
 		///setting the file buffer
