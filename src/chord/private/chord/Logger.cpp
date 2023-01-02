@@ -119,7 +119,7 @@ void Logger :: readConfig()
 {
 	try
 	{
-		std::ifstream infile("/var/log/LogConfig");
+		std::ifstream infile("/var/log/chordLogs/LogConfig");
 		std::getline(infile, logFileName);
 		infile.close();
 	}
