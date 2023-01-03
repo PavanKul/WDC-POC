@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <signal.h>
 #include "crypto/sha1.h"
 #include "crypto/sha1.h"
 
@@ -24,8 +25,31 @@ CommandLine * gCommandLine = nullptr;
 // This should be stored in a file
 // to make it persistent
 Chord::serializable_map<std::string, int> file_map;
+Chord::LocalNode localNode;
 
 using namespace std;
+
+void fileStore()
+{
+	std::vector<char> buffer = file_map.serialize();
+	ofstream os ("/store/filemap.dat", ios::binary);
+	int size = buffer.size();
+	cout << "Size of the vector buffer: " << size << endl;
+	os.write((const char*)&size, 4);
+	os.write((const char*)&buffer[0], size * sizeof(char));
+	os.close();
+	cout << "Map saved" << endl;
+}
+
+void interrupt_handler(int sig)
+{
+    cout << "\nReceived interruption : " << sig << endl;
+    fileStore();
+	localNode.leave();
+	exit(1);
+
+}
+
 int32 main(int32 argc, char ** argv)
 {
 	//////////////////////////////////////////////////
@@ -37,10 +61,10 @@ int32 main(int32 argc, char ** argv)
 	gThreadManager = new ThreadManager();
 	gCommandLine = new CommandLine(argc, argv);
 
-	Chord::LocalNode localNode;
+//	Chord::LocalNode localNode;
 
 	std::vector<char> buffer;
-	ifstream is("/home/msys/filemap.dat", ios::binary);
+	ifstream is("/store/filemap.dat", ios::binary);
 	if (is) {
 		int size;
 		is.read((char*)&size, 4);
@@ -62,11 +86,16 @@ int32 main(int32 argc, char ** argv)
 	auto updater = RunnableThread::create(new Chord::UpdateTask(&localNode), "Updater");
 
 	char line[256] = {};
+
 	printf("User options: \np = Print Info, \nl = Lookup, \nq = Leave node, \
 			\nw = Write file, \nr = Read file, \ns = Show files, \nd = Delete file\n");
 	char c; do
 	{
-		printf("Enter your choice: ");
+		cout << "Enter your choice: " << endl;
+
+		signal(SIGINT, interrupt_handler);
+		signal(SIGSEGV, interrupt_handler);
+
 		switch (c = getc(stdin))
 		{
 		case 'p':
@@ -87,14 +116,7 @@ int32 main(int32 argc, char ** argv)
 
 		case 'q':
 		{
-
-			std::vector<char> buffer = file_map.serialize();
-			ofstream os ("/store/filemap.dat", ios::binary);
-			int size = buffer.size();
-			cout << "Size of the vector buffer: " << size << endl;
-			os.write((const char*)&size, 4);
-			os.write((const char*)&buffer[0], size * sizeof(char));
-			os.close();
+			fileStore();
 			localNode.leave();
 			break;
 		}
@@ -170,9 +192,9 @@ int32 main(int32 argc, char ** argv)
 
 		case 'r':
 		{
-			string fileName;
+			string fileName = "";
 			cout <<"Enter the filename: ";
-			cin>>fileName;
+			cin >> fileName;
 			uint32 key;
 			auto it = file_map.find(fileName);
 			if(it != file_map.end())
