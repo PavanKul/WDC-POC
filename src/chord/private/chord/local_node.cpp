@@ -629,7 +629,7 @@ namespace Chord
         void LocalNode::handleDelete(const Request & req)
         {
         	Request res{req};
-        	string file_name("/home/msys/");
+        	string file_name("/store/");
         	file_name += to_string(req.buff_key);
 
         	try {
