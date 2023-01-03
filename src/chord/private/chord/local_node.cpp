@@ -130,7 +130,6 @@ namespace Chord
 
         void LocalNode::deleteFile( uint32 key, const char* file_name )
         {
-        	key = 1855543309;
         	auto dest  = lookup(key);
         	auto dest_node = dest.get();
         	printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
@@ -630,7 +629,6 @@ namespace Chord
         void LocalNode::handleDelete(const Request & req)
         {
         	Request res{req};
-        	//	string file_name("/store/");
         	string file_name("/home/msys/");
         	file_name += to_string(req.buff_key);
 
