@@ -24,7 +24,8 @@ namespace Chord
 			LEAVE,
 			CHECK,
 			WRITE,
-			READ
+			READ,
+			DELETE
 		};
 		
 		/// Request type
