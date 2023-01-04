@@ -2,6 +2,7 @@
 #include "crypto/sha1.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 using namespace std;
 namespace Chord
@@ -125,6 +126,36 @@ namespace Chord
                 memset(req.file_name, 0, MAX_FILE_NAME_LENGTH);
                 strncpy(req.file_name, file_name, MAX_FILE_NAME_LENGTH-1);
                 socket.write<Request>(req, req.recipient);
+        }
+
+        void LocalNode::deleteFile( uint32 key, const char* file_name )
+        {
+        	auto dest  = lookup(key);
+        	auto dest_node = dest.get();
+        	printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+        	Request req = makeRequest(
+        			Request::DELETE,
+        			dest_node);
+
+        	req.sender = self.addr;
+        	req.setSrc<NodeInfo>(self);
+        	req.buff_key = key;
+
+        	char clienthost[NI_MAXHOST];  //The clienthost will hold the IP address.
+        	char clientservice[NI_MAXSERV];
+        	int theErrorCode = getnameinfo(&(req.recipient.__addr), sizeof(req.recipient.__addr), clienthost, sizeof(clienthost), clientservice,
+        			sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
+
+        	std::cout << "LocalNode::deleteFile Receipent :: " << clienthost << std::endl;
+
+        	theErrorCode = getnameinfo(&(req.sender.__addr), sizeof(req.sender.__addr), clienthost, sizeof(clienthost), clientservice,
+        			sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
+
+        	std::cout << "LocalNode::deleteFile Sender :: " << clienthost << std::endl;
+
+        	memset(req.file_name, 0, MAX_FILE_NAME_LENGTH);
+        	strncpy(req.file_name, file_name, MAX_FILE_NAME_LENGTH-1);
+        	socket.write<Request>(req, req.recipient);
         }
 
 	bool LocalNode::join(const Ipv4 & peer)
@@ -419,6 +450,11 @@ namespace Chord
                         printf("LOG: received READ from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
                         handleRead(req);
                         break;
+
+        case Request::DELETE:
+        	printf("LOG: received DELETE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+        	handleDelete(req);
+        	break;
 		
 		default:
 			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
@@ -588,5 +624,22 @@ namespace Chord
                 res.isRead = true;
                 res.type = Request::WRITE; 
                 socket.write<Request>(res, res.sender);
+        }
+
+        void LocalNode::handleDelete(const Request & req)
+        {
+        	Request res{req};
+        	string file_name("/store/");
+        	file_name += to_string(req.buff_key);
+
+        	try {
+        		if (std::filesystem::remove(file_name))
+        			std::cout << "file " << file_name << " deleted.\n";
+        		else
+        			std::cout << "file " << file_name << " not found.\n";
+        	}
+        	catch(const std::filesystem::filesystem_error& err) {
+        		std::cout << "filesystem error: " << err.what() << '\n';
+        	}
         }
 } // namespace Chord

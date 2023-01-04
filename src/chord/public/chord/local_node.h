@@ -163,6 +163,14 @@ namespace Chord
                  */
                  void read(uint32 key, const char* file_name);
 
+                 /**
+                  * delete will send a delete request to destination
+                  *
+                  * @param [in] a key (corresponds to a file)
+                  * @return void
+                  */
+                 void deleteFile(uint32 key, const char* file_name);
+
 		/**
 		 * Leave chord ring
 		 */
@@ -220,6 +228,7 @@ namespace Chord
 		void handleCheck(const Request & req);
 		void handleWrite(const Request & req);
 		void handleRead(const Request & req);
+		void handleDelete(const Request & req);
 		/// @}
 		
 	public:
