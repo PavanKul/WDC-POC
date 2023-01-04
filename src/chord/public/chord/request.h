@@ -25,7 +25,8 @@ namespace Chord
 			CHECK,
 			WRITE,
 			READ,
-			DELETE
+			DELETE,
+			GETFILELIST
 		};
 		
 		/// Request type
@@ -61,6 +62,7 @@ namespace Chord
                 uint32 buff_key;
                 char file_name[MAX_FILE_NAME_LENGTH];
                 bool isRead = false;
+                bool isFileList = false;
 
 	public:
 		///setting the file buffer

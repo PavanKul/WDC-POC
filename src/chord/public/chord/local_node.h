@@ -7,7 +7,7 @@
 #include "request.h"
 #include "math/uuid_generator.h"
 
-#define MAX_FILE_NAME 296
+#define MAX_FILE_NAME 10240
 
 namespace Chord
 {
@@ -176,6 +176,12 @@ namespace Chord
 		 */
 		void leave();
 
+		/**
+		 * Get the file list from a node from the cluster.
+		 * If no node specified, list will be fetched from
+		 * successor node*/
+		void getFileList(uint32 key);
+
 	protected:
 		/**
 		 * Stabilize node and notify successor
@@ -229,6 +235,7 @@ namespace Chord
 		void handleWrite(const Request & req);
 		void handleRead(const Request & req);
 		void handleDelete(const Request & req);
+		void handleGetFileList(const Request & req);
 		/// @}
 		
 	public:
