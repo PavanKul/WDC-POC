@@ -87,11 +87,12 @@ int32 main(int32 argc, char ** argv)
 
 	char line[256] = {};
 	printf("User options: \np = Print Info, \nl = Lookup, \nq = Leave node, \
-			\nw = Write file, \nr = Read file, \ns = Show files, \nd = Delete file\n");
+			\nw = Write file, \nr = Read file, \ns = Show files, \nd = Delete file,"
+			"\ng = get file list from any other node\n");
 
 	char c; do
 	{
-		printf("Enter your choice: ");
+		printf("\nEnter your choice: ");
 
 		signal(SIGINT, interrupt_handler);
 		signal(SIGSEGV, interrupt_handler);
@@ -204,8 +205,8 @@ int32 main(int32 argc, char ** argv)
 		case 'r':
 		{
 			string fileName;
-			cout <<"Enter the filename: ";
-			cin>>fileName;
+			cout << "Enter the filename: ";
+			cin >> fileName;
 			uint32 key;
 			auto it = file_map.find(fileName);
 			if(it != file_map.end())
@@ -226,6 +227,17 @@ int32 main(int32 argc, char ** argv)
 			cout << "List of files added using this node:\n";
 			for (auto i : file_map)
         			cout << "'" << i.first << "',   " << endl;
+			break;
+		}
+
+		case 'g':
+		{
+			int key = 0;
+			string s = "";
+			cout << "Enter the key or 0 if targetting to successor : " << endl;
+			cin >> key;
+
+			localNode.getFileList(key);
 			break;
 		}
 

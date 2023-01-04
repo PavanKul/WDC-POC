@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <dirent.h>
 
 using namespace std;
 namespace Chord
@@ -157,7 +158,39 @@ namespace Chord
         	strncpy(req.file_name, file_name, MAX_FILE_NAME_LENGTH-1);
         	socket.write<Request>(req, req.recipient);
         }
+        void LocalNode :: getFileList(uint32 key)
+        {
+        	Request req{Request::GETFILELIST};
 
+        	if (key > 0)
+        	{
+            	auto dest  = lookup(key);
+            	auto dest_node = dest.get();
+            	req.recipient = dest_node.addr;
+            	printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+        	}
+        	else // Send to successor
+        		req.recipient = successor.addr;
+
+
+        	req.sender = self.addr;
+        	req.setSrc<NodeInfo>(self);
+        	req.buff_key = key;
+
+        	char clienthost[NI_MAXHOST];  //The clienthost will hold the IP address.
+        	char clientservice[NI_MAXSERV];
+        	int theErrorCode = getnameinfo(&(req.recipient.__addr), sizeof(req.recipient.__addr), clienthost, sizeof(clienthost), clientservice,
+        			sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
+
+        	std::cout << "LocalNode::getFileList Receipent :: " << clienthost << std::endl;
+
+        	theErrorCode = getnameinfo(&(req.sender.__addr), sizeof(req.sender.__addr), clienthost, sizeof(clienthost), clientservice,
+        			sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
+
+        	std::cout << "LocalNode::getFileList Sender :: " << clienthost << std::endl;
+
+        	socket.write<Request>(req, req.recipient);
+        }
 	bool LocalNode::join(const Ipv4 & peer)
 	{
 		// Join starts with a lookup request
@@ -456,6 +489,11 @@ namespace Chord
         	handleDelete(req);
         	break;
 		
+        case Request::GETFILELIST:
+        	printf("LOG: received GETFILELIST from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+        	handleGetFileList(req);
+        	break;
+
 		default:
 			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			break;
@@ -640,6 +678,40 @@ namespace Chord
         	}
         	catch(const std::filesystem::filesystem_error& err) {
         		std::cout << "filesystem error: " << err.what() << '\n';
+        	}
+        }
+
+        void LocalNode::handleGetFileList(const Request & req)
+        {
+        	Request res{req};
+        	if (req.isFileList)
+        	{
+        		cout << "Received file list :: " << req.file_buff << endl;
+        	}
+        	else
+        	{
+            	string dirName("/store/");
+            	DIR *dr;
+            	struct dirent *en;
+            	dr = opendir(dirName.c_str()); //open all directory
+            	memset (res.file_buff, 0, MAX_FILE_NAME);
+            	if (dr) {
+            		while ((en = readdir(dr)) != NULL)
+            		{
+            			long num = 0;
+            			num = atol(en->d_name);
+            			if ( num > 0)
+            			{
+            				strncat (res.file_buff, en->d_name, strlen(en->d_name));
+            				strncat (res.file_buff, ",", strlen(","));
+            			}
+            		}
+            		cout << "File list :: " << res.file_buff << endl; //print all directory name
+            		closedir(dr); //close all directory
+            	}
+                res.isFileList = true;
+                res.type = Request::GETFILELIST;
+                socket.write<Request>(res, res.sender);
         	}
         }
 } // namespace Chord
