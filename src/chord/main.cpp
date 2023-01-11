@@ -3,6 +3,7 @@
 #include "hal/threading.h"
 #include "misc/command_line.h"
 #include "chord/chord.h"
+#include "chord/types.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -34,7 +35,6 @@ void fileStore()
 	std::vector<char> buffer = file_map.serialize();
 	ofstream os ("/store/filemap.dat", ios::binary);
 	int size = buffer.size();
-	cout << "Size of the vector buffer: " << size << endl;
 	os.write((const char*)&size, 4);
 	os.write((const char*)&buffer[0], size * sizeof(char));
 	os.close();
@@ -131,6 +131,7 @@ int32 main(int32 argc, char ** argv)
 		case 'w':
 		{
 			string path = "";
+			Chord::NodeInfo temp;
 			cout << "Please enter file name (full path) to be stored: " << endl;
 			cin >> path;
 			string filename = path.substr(path.find_last_of("/\\") + 1);
@@ -167,14 +168,13 @@ int32 main(int32 argc, char ** argv)
 				}
 				uint32 hash[5]; Crypto::sha1(buffer, hash);
 				printf("File key: 0x%08x\n", hash[0]);
-				localNode.write(hash[0], buffer, file_size);
+				localNode.write(hash[0], buffer, file_size, temp); // temp will not be used
 				string pathstr = string(path);
 				string filename = pathstr.substr(pathstr.find_last_of("/\\") + 1);
 				cout <<"File added: "<< pathstr << endl;
 				file_map.insert(pair<string, uint32>(filename, hash[0]));
 				if (buffer)
 				{
-					delete buffer;
 					buffer = NULL;
 				}
 			}

@@ -5,6 +5,8 @@
 #include <filesystem>
 
 using namespace std;
+namespace fs = std::filesystem;
+
 namespace Chord
 {
 	LocalNode::LocalNode()
@@ -89,14 +91,82 @@ namespace Chord
 		return out;
 	}
 
-        void LocalNode::write(uint32 key, char* buff, size_t size)
+        void LocalNode::copy(const char * file_path, const char * file_name, const NodeInfo target, const int copy_type)
+	{
+		char path[MAX_FILE_SIZE];
+		char *buffer = NULL;
+		int file_size = 0;
+		printf("Copy func called, file_path = %s, file_name = %s\n", file_path, file_name);
+		strcpy(path, file_path);
+		strcat(path, file_name);
+		ifstream fin(path, ios::in | ios::binary );
+		if (!fin) {
+			cout<< "File not found!" <<endl;
+			return;
+		}
+		fin.seekg(0, ios::end);
+		file_size = fin.tellg();
+		if(buffer = new char[file_size])
+		{
+			memset(buffer, '0', file_size);
+		}
+		else{
+			//TODO: handle out of memory
+		}
+		fin.seekg(0, ios::beg);
+		fin.read(buffer, file_size);
+		fin.close();
+		// When use write for copy files
+		// use 'key' = '0'
+		
+		write(0, buffer, file_size, target, file_name, copy_type);
+		buffer = NULL;
+	}
+
+	void LocalNode::getWritePath(Request & res, char* filepath)
+        {
+                if (true == res.isRead)
+                {
+                       strcpy(filepath, "/Downloads/");
+
+                }
+                else
+                {
+                       if (true == res.isDest)
+                       {
+                               strcpy(filepath, "/store/");
+                               res.isDest = false;
+                               res.isSucc1 = true;
+                       }
+                       else if(true == res.isSucc1)
+                       {
+                               strcpy(filepath, "/store/copy1/");
+                               res.isSucc1 = false;
+                               res.isSucc2 = true;
+                       }
+                       else if(true == res.isSucc2)
+                       {
+                               strcpy(filepath, "/store/copy2/");
+                               res.isSucc2 = false;
+                       }
+                }
+	}
+
+
+        void LocalNode::write(uint32 key, char* buff, size_t size,
+			const NodeInfo target, const char *file_name, int write_type)
         {
     
+		NodeInfo dest_node;
 	    	//find receipient
-            	auto dest  = lookup(key);
-		auto dest_node = dest.get();
-		printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
-            	//Request req{Request::WRITE};
+		if (0 == key) {
+			dest_node = target;
+		}
+		else {
+			auto dest  = lookup(key);
+			dest_node = dest.get();
+			printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+		}
 	    	Request req = makeRequest(
 			Request::WRITE,
 			dest_node
@@ -106,8 +176,19 @@ namespace Chord
             	req.setSrc<NodeInfo>(self);	
 	
 	    	//copy buff to req.buff 
-	    	req.setBuff(key, buff, size);
-		delete[] buff;
+		req.setBuff(key, buff, size, file_name);
+		if (99 == write_type)
+			req.isGetFile = true;
+		else if (1 == write_type) {
+			req.isSucc1 = true;
+			req.isDest = false;
+		} else if (2 == write_type) {
+			req.isSucc2 = true;
+			req.isDest = false;
+		}
+
+		delete[] buff; // This memory allocation is no longer used
+			       // hence deleted
             	socket.write<Request>(req, req.recipient);
         }
 
@@ -180,7 +261,9 @@ namespace Chord
 		successor = res.getDst<NodeInfo>();
 
 		printf("INFO: connected with successor %s\n", *successor.getInfoString());
-		
+		// New node added, fetch all keys from successor
+		// that belong to this node
+		getSuccFiles("/store/");
 		return true;
 	}
 
@@ -229,8 +312,61 @@ namespace Chord
 		return out;
 	}
 
+
+	void LocalNode::getSuccFiles(const char * path)
+	{
+		Request req = makeRequest(
+                        Request::GETFILELIST,
+                        successor
+                );
+		//req.recipient = successor.addr;
+		strcpy(req.file_name, path);
+		req.buff_key = id;
+		req.sender = self.addr;
+		req.setSrc<NodeInfo>(self);
+		socket.write<Request>(req, req.recipient);
+		cout<<"In getSuccFiles \n";
+	}
+
+	void LocalNode::getFileList(const char * path, vector<string>& file_list, uint32 check_key)
+	{
+		int key = 0;
+		for (const auto & entry : fs::directory_iterator(path)) {
+			string file_name = entry.path().filename();
+			key = atoi(file_name.c_str());
+                        if (key != 0 && key <= check_key) {
+                                file_list.push_back(file_name);
+                        }
+		}
+	}
+
+	void LocalNode::removeLocalFile(string file_name)
+	{
+		try {
+		if (std::filesystem::remove(file_name))
+			std::cout << "file " << file_name << " deleted.\n";
+		else
+			std::cout << "file " << file_name << " not found.\n";
+		}
+		catch(const std::filesystem::filesystem_error& err) {
+			std::cout << "filesystem error: " << err.what() << '\n';
+		}
+	}
+
 	void LocalNode::leave()
 	{
+		char file_name[MAX_FILE_SIZE];
+		vector<string> file_list;
+		if (successor.id != id) {
+			getFileList("/store/", file_list);
+			for (int i = 0; i < file_list.size(); i++) {
+				printf("LOG: sending file %s\n", file_list[i].c_str());
+				copy("/store/", file_list[i].c_str(), successor, 0);
+				strcpy(file_name, "/store/");
+				strcat(file_name, file_list[i].c_str());
+				removeLocalFile(string(file_name));
+			}
+                }
 		// Inform successor and predecessor
 		// we are leaving the network
 		Request req{Request::LEAVE};
@@ -399,7 +535,7 @@ namespace Chord
 				// Remove expired callback
 				callbacks.remove(it);
 
-				printf("LOG: no reply received for request with id %08x\n", id);
+				//printf("LOG: no reply received for request with id %08x\n", id);
 			}
 		}
 
@@ -451,11 +587,16 @@ namespace Chord
                         handleRead(req);
                         break;
 
-        case Request::DELETE:
-        	printf("LOG: received DELETE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
-        	handleDelete(req);
-        	break;
-		
+		case Request::DELETE:
+			printf("LOG: received DELETE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			handleDelete(req);
+			break;
+
+		case Request::GETFILELIST:
+			printf("LOG: received GETFILELIST from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			handleGetFiles(req);
+			break;
+
 		default:
 			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			break;
@@ -478,6 +619,36 @@ namespace Chord
 			// Remove
 			callbacks.remove(it);
 		}
+	}
+
+	void LocalNode::handleGetFiles(const Request & req)
+	{
+		char file_path[MAX_FILE_NAME_SIZE];
+		const NodeInfo & src = req.getSrc<NodeInfo>();
+        	Request send{req};
+		vector<string> file_list;
+		printf("handleGetFiles called\n");
+		strcpy(file_path, req.file_name);
+		if (req.buff_key < id) {
+			getFileList(file_path, file_list, req.buff_key);
+			for (int i = 0; i < file_list.size(); i++) {
+				printf("LOG: sending file %s\n", file_list[i].c_str());
+				copy(req.file_name, file_list[i].c_str(), src, 99);
+				strcpy(file_path, req.file_name);
+				strcat(file_path, file_list[i].c_str());
+				removeLocalFile(string(file_path));
+			}
+		}
+		if (strcmp(req.file_name, "/store/") == 0)
+			strcpy(send.file_name, "/store/copy1/");
+		else if (strcmp(req.file_name, "/store/copy1") == 0)
+			strcpy(send.file_name, "/store/copy2/");
+		else
+			return;
+		send.sender = self.addr;
+		send.recipient = successor.addr;
+
+                socket.write<Request>(send, send.recipient);
 	}
 
 	void LocalNode::handleLookup(const Request & req)
@@ -572,35 +743,98 @@ namespace Chord
 		// TODO: chain checks along a lookup path
 	}
 
+
 	void LocalNode::handleWrite(const Request & req)
     	{
         	Request sender{req};
+		Request res{req};
 		char filepath[MAX_FILE_NAME];
 		string filename;
+		bool isSucc2 = res.isSucc2;
+		bool isSucc1 = res.isSucc1;
+		bool isDest = res.isDest;
+		getWritePath(res, filepath);
+		printf("getWritePath: %s\n", filepath);
                 if (true == req.isRead)
 		{
-                       strcpy(filepath, "/Downloads/");
-		       filename = req.file_name;
+			if (0 == req.buff_key) {
+				strcpy(filepath, "/store/");
+				filename = req.file_name;
+				strcat(filepath, req.file_name);
+			}
+			else {
+				//strcpy(filepath, "/Downloads/");
+				filename = req.file_name;
+			}
 
 		}
                 else
 		{
-		       strcpy(filepath, "/store/");
-		       filename = to_string(req.buff_key);
+			if (0 == req.buff_key) {
+				filename = string(req.file_name);
+				strcat(filepath, filename.c_str());
+				printf("Received file %s as copy\n", filepath);
+			}
+			else
+				filename = to_string(req.buff_key);
 		}
-		strcat(filepath, filename.c_str());
+		if (0 != req.buff_key)
+			strcat(filepath, filename.c_str());
 		ofstream fout(filepath, ios::out | ios::binary);
     		fout.write (&req.file_buff[0], req.buff_size);
 		fout.close();
+		if (req.isGetFile || isSucc2)
+			return;
+		if((true != req.isRead) && 
+				(res.isSucc1 || res.isSucc2))
+		{
+			if (0 == req.buff_key) {
+				int copy_type;
+				string pathstr = string(req.file_name);
+				string filename = pathstr.substr(pathstr.find_last_of("/\\") + 1);
+				if (isDest) {
+					strcpy(filepath, "/store/copy1/");
+					copy_type = 1;
+				}
+				else {
+					strcpy(filepath, "/store/copy2/");
+					copy_type = 2;
+				}
+				copy(filepath, filename.c_str(), successor, copy_type);
+			} else {
+                        	res.sender = self.addr;
+                        	res.recipient = successor.addr;
+
+                		socket.write<Request>(res, res.recipient);
+			}
+		}
     	}
 
         void LocalNode::handleRead(const Request & req)
         {
                 Request res{req};
                 string file_name("/store/");
-                file_name += to_string(req.buff_key);
+                //string name = to_string(req.buff_key);
+		string name = to_string(req.buff_key);
+		file_name += name;
+                if (0 != req.buff_key) {
+			file_name += to_string(req.buff_key);
+		} else {
+			file_name += string(req.file_name);
+		}
                 int file_size = 0;
                 ifstream fin(file_name, ios::in | ios::binary );
+		if (!fin)
+		{
+                        file_name = "/store/copy1/" + name;
+			fin.open(file_name, ios::in | ios::binary );
+		        if (!fin)
+                        {
+                                file_name = "/store/copy2/" + name;
+                                fin.open(file_name, ios::in | ios::binary );
+		        }
+
+		}
                 if (fin)
                 {
                         fin.seekg(0, ios::end);
@@ -626,8 +860,8 @@ namespace Chord
                 socket.write<Request>(res, res.sender);
         }
 
-        void LocalNode::handleDelete(const Request & req)
-        {
+	void LocalNode::handleDelete(const Request & req)
+	{
         	Request res{req};
         	string file_name("/store/");
         	file_name += to_string(req.buff_key);

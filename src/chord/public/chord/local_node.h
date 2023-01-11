@@ -6,9 +6,12 @@
 #include "types.h"
 #include "request.h"
 #include "math/uuid_generator.h"
+#include <vector>
 
-#define MAX_FILE_NAME 296
+#define MAX_FILE_NAME 2048
+#define MAX_FILE_NAME_SIZE 296
 
+using namespace std;
 namespace Chord
 {
 	/**
@@ -153,7 +156,27 @@ namespace Chord
                  * @param [in] a  key, buffer & buffer size
                  * @return void
                  */
-                 void write(uint32 key, char* buff, size_t size);
+                 void write(uint32 key, char* buff, size_t size,
+				 const NodeInfo target, const char *file_name = NULL, int write_type = 0);
+
+		 /**
+                 * getWritePath  will set the file path for write operation
+                 *
+                 * @param [in] a req structure and filepath for storing path
+                 * @return void
+                 */
+		 void getWritePath(Request & res, char* filepath);
+
+		 /**
+                 * copy will send a file to destination
+                 *
+                 * @param [in] file_name
+                 * @return void
+                 */
+                 void copy(const char *file_path, const char * file_name, const NodeInfo target, const int copy_type);
+
+		 void removeLocalFile(string file_name);
+                 void getFileList(const char * path, vector<string>& file_list, uint32 key = 0xFFFFFFFF);
 
                  /**
                  * read will send a read request to destination
@@ -169,12 +192,18 @@ namespace Chord
                   * @param [in] a key (corresponds to a file)
                   * @return void
                   */
-                 void deleteFile(uint32 key, const char* file_name);
+                void deleteFile(uint32 key, const char* file_name);
 
 		/**
 		 * Leave chord ring
 		 */
 		void leave();
+
+		/**
+		 * Get the file list from a node from the cluster.
+		 * If no node specified, list will be fetched from
+		 * successor node*/
+		void getSuccFiles(const char * path);
 
 	protected:
 		/**
@@ -229,6 +258,8 @@ namespace Chord
 		void handleWrite(const Request & req);
 		void handleRead(const Request & req);
 		void handleDelete(const Request & req);
+		void handleGetFileList(const Request & req);
+		void handleGetFiles(const Request & req);
 		/// @}
 		
 	public:

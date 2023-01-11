@@ -2,6 +2,7 @@
 
 #include "chord_fwd.h"
 #include "templates/reference.h"
+#include <vector>
 
 #define MAX_FILE_SIZE 20480 // 20 KB
 #define MAX_FILE_NAME_LENGTH 32
@@ -25,7 +26,10 @@ namespace Chord
 			CHECK,
 			WRITE,
 			READ,
-			DELETE
+			DELETE,
+			COPY,
+			GETFILELIST,
+			REMOVE
 		};
 		
 		/// Request type
@@ -62,14 +66,22 @@ namespace Chord
                 char file_name[MAX_FILE_NAME_LENGTH];
                 bool isRead = false;
 
+		/// for redundancy WRITE
+		bool isDest = true;
+		bool isSucc1 = false;
+		bool isSucc2 = false;
+		bool isGetFile = false;
+
 	public:
 		///setting the file buffer
-		void setBuff(uint32 key, char* buff, size_t size)
+		void setBuff(uint32 key, char* buff, size_t size, const char *fname)
 	        {
 	            	buff_size = size;
 		    	buff_key = key;
 			memset(file_buff, '0', buff_size);
 			memcpy (file_buff, buff, size);
+			if (fname != NULL)
+				strcpy(file_name, fname);
 	        }
 		/// Returns whether request is expired
 		FORCE_INLINE bool isExpired() const
