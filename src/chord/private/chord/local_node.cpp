@@ -96,7 +96,8 @@ namespace Chord
 		char path[MAX_FILE_SIZE];
 		char *buffer = NULL;
 		int file_size = 0;
-		printf("Copy func called, file_path = %s, file_name = %s\n", file_path, file_name);
+		printf("Copy func called, file_path = %s, file_name = %s, dest = %s\n", 
+				file_path, file_name, *getIpString(target.addr));
 		strcpy(path, file_path);
 		strcat(path, file_name);
 		ifstream fin(path, ios::in | ios::binary );
@@ -177,14 +178,29 @@ namespace Chord
 	
 	    	//copy buff to req.buff 
 		req.setBuff(key, buff, size, file_name);
-		if (99 == write_type)
+		if (99 <= write_type) {
 			req.isGetFile = true;
+			switch(write_type) {
+				case 100:
+					req.isSucc1 = true;
+					req.isDest = false;
+					req.isSucc2 = false;
+					break;
+				case 101:
+					req.isSucc2 = true;
+					req.isDest = false;
+					req.isSucc1 = false;
+					break;
+				default:;
+			}
+		}
 		else if (1 == write_type) {
 			req.isSucc1 = true;
 			req.isDest = false;
 		} else if (2 == write_type) {
 			req.isSucc2 = true;
 			req.isDest = false;
+			req.isSucc1 = false;
 		}
 
 		delete[] buff; // This memory allocation is no longer used
@@ -593,7 +609,8 @@ namespace Chord
 			break;
 
 		case Request::GETFILELIST:
-			printf("LOG: received GETFILELIST from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			printf("LOG: received GETFILELIST from %s with id 0x%08x path %s\n",
+				       *getIpString(req.sender), req.id, req.file_name);
 			handleGetFiles(req);
 			break;
 
@@ -627,27 +644,77 @@ namespace Chord
 		const NodeInfo & src = req.getSrc<NodeInfo>();
         	Request send{req};
 		vector<string> file_list;
-		printf("handleGetFiles called\n");
 		strcpy(file_path, req.file_name);
-		if (req.buff_key < id) {
+		int copy_type = 99;
+		if (strcmp(req.file_name, "/store/copy1/") == 0)
+			copy_type = 100;
+		else if (strcmp(req.file_name, "/store/copy2/") == 0)
+			copy_type = 101;
+		else
+			copy_type = 99;
+		if (req.buff_key < id || copy_type > 99) {
+			file_list.clear();
 			getFileList(file_path, file_list, req.buff_key);
 			for (int i = 0; i < file_list.size(); i++) {
-				printf("LOG: sending file %s\n", file_list[i].c_str());
-				copy(req.file_name, file_list[i].c_str(), src, 99);
+				printf("LOG: sending file %s%s to %s\n", req.file_name,
+						file_list[i].c_str(), *getIpString(src.addr));
+				copy(req.file_name, file_list[i].c_str(), src, copy_type);
 				strcpy(file_path, req.file_name);
 				strcat(file_path, file_list[i].c_str());
 				removeLocalFile(string(file_path));
 			}
 		}
-		if (strcmp(req.file_name, "/store/") == 0)
+
+		if (copy_type == 99) {
+			// Also copy all files from copy1 and copy2 directories
+			file_list.clear();
+			printf("Sending all copy1 and copy2 to %s\n", *getIpString(src.addr));
+			getFileList("/store/copy1/", file_list, 0xffffffff); // Giving max value
+			for (int i = 0; i < file_list.size(); i++) {
+				printf("LOG: sending file %s%s to %s\n", "/store/copy1/",
+						file_list[i].c_str(), *getIpString(src.addr));
+				copy("/store/copy1/", file_list[i].c_str(), src, 100);
+				strcpy(file_path, "/store/copy1/");
+				strcat(file_path, file_list[i].c_str());
+				removeLocalFile(string(file_path));
+			}
+			file_list.clear();
+			getFileList("/store/copy2/", file_list, 0xffffffff); // Giving max value
+			for (int i = 0; i < file_list.size(); i++) {
+				printf("LOG: sending file %s/%s to %s\n", "/store/copy2/",
+						file_list[i].c_str(), *getIpString(src.addr));
+				copy("/store/copy2/", file_list[i].c_str(), src, 101);
+				strcpy(file_path, "/store/copy2/");
+				strcat(file_path, file_list[i].c_str());
+				removeLocalFile(string(file_path));
+			}
+		}
+
+		if (copy_type == 100) {
+			// copy all from copy2 directory
+			printf("Sending all copy2 to %s\n", *getIpString(src.addr));
+			file_list.clear();
+			getFileList("/store/copy2/", file_list, 0xffffffff); // Giving max value
+			for (int i = 0; i < file_list.size(); i++) {
+				printf("LOG: sending file %s/%s to %s\n", req.file_name,
+						file_list[i].c_str(), *getIpString(src.addr));
+				copy("/store/copy2/", file_list[i].c_str(), src, 101);
+				strcpy(file_path, "/store/copy2/");
+				strcat(file_path, file_list[i].c_str());
+				removeLocalFile(string(file_path));
+			}
+		}
+
+		if (99 == copy_type)
 			strcpy(send.file_name, "/store/copy1/");
-		else if (strcmp(req.file_name, "/store/copy1") == 0)
+		else if (100 == copy_type)
 			strcpy(send.file_name, "/store/copy2/");
 		else
 			return;
 		send.sender = self.addr;
 		send.recipient = successor.addr;
-
+            	send.setSrc<NodeInfo>(self);	
+		printf("Sending GetFilList to %s with path %s\n", *getIpString(send.recipient), send.file_name); 
                 socket.write<Request>(send, send.recipient);
 	}
 
@@ -772,14 +839,14 @@ namespace Chord
 		{
 			if (0 == req.buff_key) {
 				filename = string(req.file_name);
-				strcat(filepath, filename.c_str());
-				printf("Received file %s as copy\n", filepath);
+				//strcat(filepath, filename.c_str());
+				printf("Received file %s %s as copy\n", filepath, req.file_name);
 			}
 			else
 				filename = to_string(req.buff_key);
 		}
-		if (0 != req.buff_key)
-			strcat(filepath, filename.c_str());
+		//if (0 != req.buff_key)
+		strcat(filepath, filename.c_str());
 		ofstream fout(filepath, ios::out | ios::binary);
     		fout.write (&req.file_buff[0], req.buff_size);
 		fout.close();
