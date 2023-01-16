@@ -239,12 +239,14 @@ namespace Chord
 
         	char clienthost[NI_MAXHOST];  //The clienthost will hold the IP address.
         	char clientservice[NI_MAXSERV];
-        	int theErrorCode = getnameinfo(&(req.recipient.__addr), sizeof(req.recipient.__addr), clienthost, sizeof(clienthost), clientservice,
+        	int theErrorCode = getnameinfo(&(req.recipient.__addr), 
+				sizeof(req.recipient.__addr), clienthost, sizeof(clienthost), clientservice,
         			sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
 
         	std::cout << "LocalNode::deleteFile Receipent :: " << clienthost << std::endl;
 
-        	theErrorCode = getnameinfo(&(req.sender.__addr), sizeof(req.sender.__addr), clienthost, sizeof(clienthost), clientservice,
+        	theErrorCode = getnameinfo(&(req.sender.__addr), 
+				sizeof(req.sender.__addr), clienthost, sizeof(clienthost), clientservice,
         			sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV);
 
         	std::cout << "LocalNode::deleteFile Sender :: " << clienthost << std::endl;
@@ -1048,8 +1050,11 @@ namespace Chord
 	void LocalNode::handleDelete(const Request & req)
 	{
         	Request res{req};
-        	string file_name("/store/");
-        	file_name += to_string(req.buff_key);
+		char filepath[MAX_FILE_NAME];
+		
+		getWritePath(res, filepath);
+		string file_name = string(filepath);
+        	file_name += to_string(res.buff_key);
 
         	try {
         		if (std::filesystem::remove(file_name))
@@ -1060,5 +1065,12 @@ namespace Chord
         	catch(const std::filesystem::filesystem_error& err) {
         		std::cout << "filesystem error: " << err.what() << '\n';
         	}
+		if(res.isSucc1 || res.isSucc2)
+		{
+			res.sender = self.addr;
+			res.recipient = successor.addr;
+
+			socket.write<Request>(res, res.recipient);
+		}
         }
 } // namespace Chord
