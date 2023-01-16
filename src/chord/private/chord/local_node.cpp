@@ -171,7 +171,6 @@ namespace Chord
 	    	Request req = makeRequest(
 			Request::WRITE,
 			dest_node
-			//NodeInfo{(uint32)-1, dest.addr}
 		);
             	req.sender = self.addr;
             	req.setSrc<NodeInfo>(self);	
@@ -356,6 +355,86 @@ namespace Chord
 		}
 	}
 
+	void LocalNode::copyDirectory(const char * src, const char * dest)
+	{
+		int key = 0;
+                for (const auto & entry : fs::directory_iterator(src)) {
+                        string file_name = entry.path().filename();
+                        key = atoi(file_name.c_str());
+			
+                        if (key != 0) {
+                                fs::copy(entry.path(), dest, fs::copy_options::overwrite_existing);
+                        }
+                }
+	}
+
+	void LocalNode::copyDirectoryRemote(const char * src, const char * dest, NodeInfo target)
+	{
+		int key = 0;
+                for (const auto & entry : fs::directory_iterator(src)) {
+                        string file_name = entry.path().filename();
+                        key = atoi(file_name.c_str());
+			
+                        if (key != 0) {
+				copyToRemote(entry.path().c_str(), file_name.c_str(), dest, target);
+                        }
+                }
+	}
+
+	void LocalNode::deleteDirectory(const char * src)
+	{
+		uint32 key;
+                for (const auto & entry : fs::directory_iterator(src)) {
+                        string file_name = entry.path().filename();
+                        key = atoi(file_name.c_str());
+			
+                        if (key != 0) {
+				removeLocalFile(entry.path());
+                        }
+                }
+	}
+	
+	void LocalNode::copyToRemote(const char * file_path, const char * file_name, 
+			const char * dest, NodeInfo target)
+	{
+		char *buffer = NULL;
+		int file_size = 0;
+
+		printf("Copy destination called, file_path = %s, file_name = %s,\n \
+			     	dest = %s, target %s\n", 
+				file_path, file_name, dest, *getIpString(target.addr));
+		ifstream fin(file_path, ios::in | ios::binary );
+		if (!fin) {
+			cout<< "File not found!" <<endl;
+			return;
+		}
+		fin.seekg(0, ios::end);
+		file_size = fin.tellg();
+		if(buffer = new char[file_size])
+		{
+			memset(buffer, '0', file_size);
+		}
+		else{
+			//TODO: handle out of memory
+		}
+		fin.seekg(0, ios::beg);
+		fin.read(buffer, file_size);
+		fin.close();
+	    	
+		Request req = makeRequest(
+			Request::WRITE,
+			target
+		);
+		req.isCopyRemote = true;
+            	req.sender = self.addr;
+            	req.setSrc<NodeInfo>(self);	
+		req.setBuff(0, buffer, file_size, file_name);
+		strcpy(req.destPath, dest);
+		delete[] buffer; // This memory allocation is no longer used
+			       // hence deleted
+            	socket.write<Request>(req, req.recipient);
+	}
+
 	void LocalNode::removeLocalFile(string file_name)
 	{
 		try {
@@ -372,7 +451,8 @@ namespace Chord
 	void LocalNode::leave()
 	{
 		char file_name[MAX_FILE_SIZE];
-		vector<string> file_list;
+		/*vector<string> file_list;
+		printf("Leave called for gracefull exit\n");
 		if (successor.id != id) {
 			getFileList("/store/", file_list);
 			for (int i = 0; i < file_list.size(); i++) {
@@ -382,7 +462,7 @@ namespace Chord
 				strcat(file_name, file_list[i].c_str());
 				removeLocalFile(string(file_name));
 			}
-                }
+                }*/
 		// Inform successor and predecessor
 		// we are leaving the network
 		Request req{Request::LEAVE};
@@ -474,19 +554,43 @@ namespace Chord
 		nextFinger = ++nextFinger == 32U ? 1U : nextFinger;
 	}
 
+	void LocalNode::leaveSucc()
+	{
+		Request req = makeRequest(
+                        Request::LEAVESUCC,
+                        successor
+                );
+		//req.recipient = successor.addr;
+		//strcpy(req.file_name, path);
+		//req.buff_key = id;
+		req.sender = self.addr;
+		req.setSrc<NodeInfo>(self);
+		socket.write<Request>(req, req.recipient);
+		cout<<"In leaveSucc\n";
+
+	}
+
 	void LocalNode::removePeer(const NodeInfo & peer)
 	{
-		if (peer.id == predecessor.id)
+		if (peer.id == predecessor.id) {
 			// Set predecessor to NIL
+			copyDirectory("/store/copy1/", "/store/");
+			deleteDirectory("/store/copy1/");
+			copyDirectory("/store/copy2/", "/store/copy1/");
+			copyDirectoryRemote("/store/copy2/", "/store/copy2/temp/", successor);
+			deleteDirectory("/store/copy2/");
+			//printf("Predecessor %s removed\n", *peer.getInfoString());
 			setPredecessor(self);
+			leaveSucc();
+		}
 		
 		if (peer.id == successor.id)
 		{
+			printf("Successor %s removed\n", *peer.getInfoString());
 			// ! I don't think this actually works
 
-			// Reset successor temporarily
 			setSuccessor(self);
-
+			// Reset successor temporarily
 			// Do lookup on predecessor
 			Request req = makeRequest(
 				Request::LOOKUP,
@@ -494,8 +598,8 @@ namespace Chord
 				[this](const Request & req) {
 					
 					setSuccessor(req.getDst<NodeInfo>());
-
-					//printf("LOG: new successor is %s\n", *successor.getInfoString());
+					copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
+					printf("LOG: new successor is %s\n", *successor.getInfoString());
 				}
 			);
 			req.setDst<uint32>(id + 1);
@@ -614,10 +718,25 @@ namespace Chord
 			handleGetFiles(req);
 			break;
 
+		case Request::LEAVESUCC:
+			printf("LOG: received LEAVESUCC from %s with id 0x%08x\n",
+				       *getIpString(req.sender), req.id);
+			handleLeaveSucc(req);
+			break;
+
 		default:
 			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
 			break;
 		}
+	}
+
+	void LocalNode::handleLeaveSucc(const Request & req)
+	{
+		copyDirectory("/store/copy2/", "/store/copy1/");
+		copyDirectoryRemote("/store/copy2/", "/store/copy2/", successor);
+		deleteDirectory("/store/copy2/");	
+		copyDirectory("/store/copy2/temp/", "/store/copy2/");
+		deleteDirectory("/store/copy2/temp/");	
 	}
 
 	void LocalNode::handleReply(const Request & req)
@@ -821,6 +940,19 @@ namespace Chord
 		bool isSucc1 = res.isSucc1;
 		bool isDest = res.isDest;
 		getWritePath(res, filepath);
+
+		// Handling copy to remote first
+		if (req.isCopyRemote) {
+			strcpy(filepath, req.destPath);
+			strcat(filepath, req.file_name);
+			printf("Copy to remote received: %s %s\n", req.destPath, req.file_name);
+			ofstream fout(filepath, ios::out | ios::binary);
+    			fout.write (&req.file_buff[0], req.buff_size);
+			fout.close();
+
+			return;
+		}
+
 		printf("getWritePath: %s\n", filepath);
                 if (true == req.isRead)
 		{

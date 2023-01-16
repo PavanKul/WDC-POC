@@ -177,6 +177,12 @@ namespace Chord
 
 		 void removeLocalFile(string file_name);
                  void getFileList(const char * path, vector<string>& file_list, uint32 key = 0xFFFFFFFF);
+                 void copyDirectory(const char * src, const char * dest);
+		 void copyDirectoryRemote(const char * src, const char * dest, NodeInfo target);
+		 void copyToRemote(const char * file_path, const char *file_name,
+				 const char * dest, NodeInfo target);
+		 void deleteDirectory(const char * src);
+		 void leaveSucc();
 
                  /**
                  * read will send a read request to destination
@@ -260,6 +266,7 @@ namespace Chord
 		void handleDelete(const Request & req);
 		void handleGetFileList(const Request & req);
 		void handleGetFiles(const Request & req);
+		void handleLeaveSucc(const Request & req);
 		/// @}
 		
 	public:

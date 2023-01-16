@@ -93,8 +93,8 @@ int32 main(int32 argc, char ** argv)
 	{
 		printf("Enter your choice: ");
 
-		signal(SIGINT, interrupt_handler);
-		signal(SIGSEGV, interrupt_handler);
+		//signal(SIGINT, interrupt_handler);
+		//signal(SIGSEGV, interrupt_handler);
 
 		switch (c = getc(stdin))
 		{

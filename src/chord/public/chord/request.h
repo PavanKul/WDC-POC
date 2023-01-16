@@ -29,7 +29,8 @@ namespace Chord
 			DELETE,
 			COPY,
 			GETFILELIST,
-			REMOVE
+			REMOVE,
+			LEAVESUCC
 		};
 		
 		/// Request type
@@ -64,6 +65,7 @@ namespace Chord
                 size_t buff_size; //TODO:this should be removed later andd add in socket itself
                 uint32 buff_key;
                 char file_name[MAX_FILE_NAME_LENGTH];
+                char destPath[MAX_FILE_NAME_LENGTH];
                 bool isRead = false;
 
 		/// for redundancy WRITE
@@ -71,6 +73,7 @@ namespace Chord
 		bool isSucc1 = false;
 		bool isSucc2 = false;
 		bool isGetFile = false;
+		bool isCopyRemote = false;
 
 	public:
 		///setting the file buffer
