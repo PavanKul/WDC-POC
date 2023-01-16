@@ -345,11 +345,11 @@ namespace Chord
 
 	void LocalNode::getFileList(const char * path, vector<string>& file_list, uint32 check_key)
 	{
-		int key = 0;
+		uint32 key = 0;
 		for (const auto & entry : fs::directory_iterator(path)) {
 			string file_name = entry.path().filename();
 			key = atoi(file_name.c_str());
-                        if (key != 0 && key <= check_key) {
+                        if (key != 0 && rangeOpenClosed(key, id, check_key)) {
                                 file_list.push_back(file_name);
                         }
 		}
@@ -451,18 +451,6 @@ namespace Chord
 	void LocalNode::leave()
 	{
 		char file_name[MAX_FILE_SIZE];
-		/*vector<string> file_list;
-		printf("Leave called for gracefull exit\n");
-		if (successor.id != id) {
-			getFileList("/store/", file_list);
-			for (int i = 0; i < file_list.size(); i++) {
-				printf("LOG: sending file %s\n", file_list[i].c_str());
-				copy("/store/", file_list[i].c_str(), successor, 0);
-				strcpy(file_name, "/store/");
-				strcat(file_name, file_list[i].c_str());
-				removeLocalFile(string(file_name));
-			}
-                }*/
 		// Inform successor and predecessor
 		// we are leaving the network
 		Request req{Request::LEAVE};
@@ -771,17 +759,15 @@ namespace Chord
 			copy_type = 101;
 		else
 			copy_type = 99;
-		if (req.buff_key < id || copy_type > 99) {
-			file_list.clear();
-			getFileList(file_path, file_list, req.buff_key);
-			for (int i = 0; i < file_list.size(); i++) {
-				printf("LOG: sending file %s%s to %s\n", req.file_name,
-						file_list[i].c_str(), *getIpString(src.addr));
-				copy(req.file_name, file_list[i].c_str(), src, copy_type);
-				strcpy(file_path, req.file_name);
-				strcat(file_path, file_list[i].c_str());
-				removeLocalFile(string(file_path));
-			}
+		file_list.clear();
+		getFileList(file_path, file_list, req.buff_key);
+		for (int i = 0; i < file_list.size(); i++) {
+			printf("LOG: sending file %s%s to %s\n", req.file_name,
+					file_list[i].c_str(), *getIpString(src.addr));
+			copy(req.file_name, file_list[i].c_str(), src, copy_type);
+			strcpy(file_path, req.file_name);
+			strcat(file_path, file_list[i].c_str());
+			removeLocalFile(string(file_path));
 		}
 
 		if (copy_type == 99) {
