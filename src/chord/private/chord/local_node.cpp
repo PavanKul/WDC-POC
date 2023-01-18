@@ -578,7 +578,7 @@ namespace Chord
 		{
 			printf("Successor %s removed\n", *peer.getInfoString());
 			// ! I don't think this actually works
-
+                        isPrecOfRemodedNode = true;
 			setSuccessor(self);
 			// Reset successor temporarily
 			// Do lookup on predecessor
@@ -588,7 +588,7 @@ namespace Chord
 				[this](const Request & req) {
 					
 					setSuccessor(req.getDst<NodeInfo>());
-					copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
+				//	copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
 					printf("LOG: new successor is %s\n", *successor.getInfoString());
 				}
 			);
@@ -620,6 +620,11 @@ namespace Chord
 
 		// Send request
 		socket.write<Request>(req, req.recipient);
+		if(true == isPrecOfRemodedNode)
+		{
+                        copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
+			isPrecOfRemodedNode = false;
+		}
 	}
 
 	void LocalNode::checkPredecessor()
