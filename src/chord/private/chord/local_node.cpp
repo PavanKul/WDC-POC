@@ -351,7 +351,8 @@ namespace Chord
 		for (const auto & entry : fs::directory_iterator(path)) {
 			string file_name = entry.path().filename();
 			key = atoi(file_name.c_str());
-                        if (key != 0 && rangeOpenClosed(key, id, check_key)) {
+                        //if (key != 0 && rangeOpenClosed(key, id, check_key)) {
+                        if (key != 0 && key <= check_key) {
                                 file_list.push_back(file_name);
                         }
 		}
@@ -359,7 +360,7 @@ namespace Chord
 
 	void LocalNode::copyDirectory(const char * src, const char * dest)
 	{
-		int key = 0;
+		uint32 key = 0;
                 for (const auto & entry : fs::directory_iterator(src)) {
                         string file_name = entry.path().filename();
                         key = atoi(file_name.c_str());
@@ -578,7 +579,7 @@ namespace Chord
 		{
 			printf("Successor %s removed\n", *peer.getInfoString());
 			// ! I don't think this actually works
-
+			isPredOfRemovedNode = true;
 			setSuccessor(self);
 			// Reset successor temporarily
 			// Do lookup on predecessor
@@ -588,7 +589,7 @@ namespace Chord
 				[this](const Request & req) {
 					
 					setSuccessor(req.getDst<NodeInfo>());
-					copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
+					//copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
 					printf("LOG: new successor is %s\n", *successor.getInfoString());
 				}
 			);
@@ -620,6 +621,11 @@ namespace Chord
 
 		// Send request
 		socket.write<Request>(req, req.recipient);
+		if(true == isPredOfRemovedNode)
+		{
+                        copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
+			isPredOfRemovedNode = false;
+		}
 	}
 
 	void LocalNode::checkPredecessor()
@@ -762,7 +768,7 @@ namespace Chord
 		else
 			copy_type = 99;
 		file_list.clear();
-		getFileList(file_path, file_list, req.buff_key);
+		/*getFileList(file_path, file_list, req.buff_key);
 		for (int i = 0; i < file_list.size(); i++) {
 			printf("LOG: sending file %s%s to %s\n", req.file_name,
 					file_list[i].c_str(), *getIpString(src.addr));
@@ -770,6 +776,19 @@ namespace Chord
 			strcpy(file_path, req.file_name);
 			strcat(file_path, file_list[i].c_str());
 			removeLocalFile(string(file_path));
+		}*/
+
+		if (req.buff_key < id || copy_type > 99) {
+			file_list.clear();
+			getFileList(file_path, file_list, req.buff_key);
+			for (int i = 0; i < file_list.size(); i++) {
+				printf("LOG: sending file %s%s to %s\n", req.file_name,
+						file_list[i].c_str(), *getIpString(src.addr));
+				copy(req.file_name, file_list[i].c_str(), src, copy_type);
+				strcpy(file_path, req.file_name);
+				strcat(file_path, file_list[i].c_str());
+				removeLocalFile(string(file_path));
+			}
 		}
 
 		if (copy_type == 99) {
@@ -1000,24 +1019,30 @@ namespace Chord
         void LocalNode::handleRead(const Request & req)
         {
                 Request res{req};
-                string file_name("/store/");
+                char file_name[MAX_FILE_NAME];
+		strcpy(file_name,"/store/");
                 //string name = to_string(req.buff_key);
 		string name = to_string(req.buff_key);
-		file_name += name;
+		//file_name += name;
                 if (0 != req.buff_key) {
-			file_name += to_string(req.buff_key);
+			//file_name += to_string(req.buff_key);
+			strcat(file_name, name.c_str());
 		} else {
-			file_name += string(req.file_name);
+			//file_name += string(req.file_name);
+			strcat(file_name, req.file_name);
 		}
                 int file_size = 0;
+		printf("handleRead key = %u file_name = %s\n", req.buff_key, file_name);
                 ifstream fin(file_name, ios::in | ios::binary );
 		if (!fin)
 		{
-                        file_name = "/store/copy1/" + name;
+                        //file_name = "/store/copy1/" + name;
+			strcat(file_name, name.c_str());
 			fin.open(file_name, ios::in | ios::binary );
 		        if (!fin)
                         {
-                                file_name = "/store/copy2/" + name;
+                                //file_name = "/store/copy2/" + name;
+				strcat(file_name, name.c_str());
                                 fin.open(file_name, ios::in | ios::binary );
 		        }
 

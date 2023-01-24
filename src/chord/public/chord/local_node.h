@@ -60,6 +60,9 @@ namespace Chord
 		/// The index of the finger we'll update
 		uint32 nextFinger;
 
+		/// To identify whether the node is predecessor of removed node
+		bool isPredOfRemovedNode = false;
+
 		/// Mutex variables
 		/// @{
 		CriticalSection predecessorGuard;
