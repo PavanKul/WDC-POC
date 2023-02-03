@@ -30,7 +30,11 @@ namespace Chord
 			COPY,
 			GETFILELIST,
 			REMOVE,
-			LEAVESUCC
+			LEAVESUCC,
+			UPDATE_SUCCONE_NODE_ADD,
+			UPDATE_SUCCTWO_NODE_ADD,
+			UPDATE_SUCCTHREE_NODE_ADD,
+			UPDATE_NEWNODE_NODE_ADD
 		};
 		
 		/// Request type
@@ -74,6 +78,11 @@ namespace Chord
 		bool isSucc2 = false;
 		bool isGetFile = false;
 		bool isCopyRemote = false;
+
+		///for redundancy Node addition (Redesign)
+		bool isCopyTwoUpdateRequired = false;
+		bool isCopyOneUpdateRequired = false;
+		bool isStoreUpdateRequired = false;
 
 	public:
 		///setting the file buffer

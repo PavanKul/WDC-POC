@@ -187,6 +187,23 @@ namespace Chord
 		 void deleteDirectory(const char * src);
 		 void leaveSucc();
 
+		 /**
+                 * Following functions added for re-design of node addition (redundency) 
+		 */
+                 void copyToRemoteNew(const char * file_path, const char * file_name,
+                                                  const char * dest, NodeInfo target);
+                 void updateForNewNodeAddition();
+                 void getFileListNew(const char * path, vector<string>& file_list, uint32 check_key);
+                 bool copyFilesToRemote(const char * src, const char * dest,
+                                         NodeInfo target, vector<string> & file_list);
+                 bool copyFilesToLocal(const char * src, const char * dest,
+                                                       vector<string>& file_list);
+                 bool copyDirectoryRemoteNew(const char * src,
+                                                const char * dest, NodeInfo target);
+                 void removeLocalFiles(string& path, vector<string>& file_list);
+                 bool transferFilesToNewNode(const Request & req,
+                                         const char * path, bool isKeyChkReq);	 
+
                  /**
                  * read will send a read request to destination
                  *
@@ -213,6 +230,7 @@ namespace Chord
 		 * If no node specified, list will be fetched from
 		 * successor node*/
 		void getSuccFiles(const char * path);
+
 
 	protected:
 		/**
@@ -270,6 +288,10 @@ namespace Chord
 		void handleGetFileList(const Request & req);
 		void handleGetFiles(const Request & req);
 		void handleLeaveSucc(const Request & req);
+		void handleSuccOneForNodeAdd(const Request & req);
+		void handleSuccTwoForNodeAdd(const Request & req);
+		void handleSuccThreeForNodeAdd(const Request & req);
+		void handleNewNodeForNodeAdd(const Request & req);
 		/// @}
 		
 	public:
