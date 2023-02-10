@@ -404,7 +404,7 @@ namespace Chord
 		char *buffer = NULL;
 		int file_size = 0;
 
-		printf("Copy destination called, file_path = %s, file_name = %s,\n \
+		printf("copyToRemote: Copy destination called, file_path = %s, file_name = %s,\n \
 			     	dest = %s, target %s\n", 
 				file_path, file_name, dest, *getIpString(target.addr));
 		ifstream fin(file_path, ios::in | ios::binary );
@@ -667,7 +667,7 @@ namespace Chord
                 char *buffer = NULL;
                 int file_size = 0;
 
-                printf("Copy destination called, file_path = %s, file_name = %s,\n \
+                printf("Copy copyToRemoteNew called, file_path = %s, file_name = %s,\n \
                                 dest = %s, target %s\n",
                                 file_path, file_name, dest, *getIpString(target.addr));
                 ifstream fin(file_path, ios::in | ios::binary );
@@ -722,6 +722,7 @@ namespace Chord
                         key = atoi(file_name.c_str());
                         if (key != 0 && key <= check_key) {
                                 file_list.push_back(file_name);
+				//printf("LOG:getFileListNew file pushed:%d, node_key:%d\n", key, check_key);
                         }
                 }
         }
@@ -802,16 +803,25 @@ namespace Chord
 		vector<string> file_list;
 		char file_path[MAX_FILE_NAME_SIZE];
 		file_list.clear();
+		const NodeInfo &new_node = req.getSrc<NodeInfo>();
 
 		if (true == isKeyChkReq)
 		{
 		        getFileListNew(path, file_list, id);
-                        isAnyFileSent = copyFilesToRemote (path, path, predecessor, file_list);
+                        //isAnyFileSent = copyFilesToRemote (path, path, predecessor, file_list);
+			isAnyFileSent = copyFilesToRemote (path, path, new_node, file_list);
+			if(isAnyFileSent)
+			{
+				string path_str(path);
+				removeLocalFiles(path_str, file_list);
+			}
                         
 		}
 		else
 		{
-                        isAnyFileSent = copyDirectoryRemoteNew(path, path, predecessor);
+                        isAnyFileSent = copyDirectoryRemoteNew(path, path, new_node);
+			if(isAnyFileSent)
+				deleteDirectory(path);
 		}
 
 		return isAnyFileSent;
@@ -1330,6 +1340,8 @@ namespace Chord
 			copyFilesToLocal("/store/copy1/", "/store/copy2/", file_list);
 			req_succ.type = Request::UPDATE_SUCCTHREE_NODE_ADD;
 			//handleSuccThreeForNodeAdd(req_succ, successor);
+			string path("/store/copy1/");
+			removeLocalFiles(path, file_list);
 			socket.write<Request>(req_succ,  successor.addr);
 		}
         }
@@ -1338,14 +1350,20 @@ namespace Chord
         {
                 vector<string> file_list;
 		getFileListNew("/store/copy2/", file_list, req.buff_key);
+		deleteDirectory("/store/copy2/");
         }
 
         void LocalNode::handleNewNodeForNodeAdd(const Request & req)
         {
                 char filepath[MAX_FILE_NAME];
+		memset(filepath, 0, MAX_FILE_NAME);
+		printf("handleNewNodeForNodeAdd: dst:%s fname:%s size:%ld\n", req.destPath,
+				                             req.file_name,  req.buff_size);
                 strcpy(filepath, req.destPath);
                 strcat(filepath, req.file_name);
-                printf("Copy to remote received: %s %s\n", req.destPath, req.file_name);
+		//printf("handleNewNodeForNodeAdd: filepath:%s\n", filepath);
+
+
                 ofstream fout(filepath, ios::out | ios::binary);
                 fout.write (&req.file_buff[0], req.buff_size);
                 fout.close();
