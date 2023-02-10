@@ -280,7 +280,8 @@ namespace Chord
 		printf("INFO: connected with successor %s\n", *successor.getInfoString());
 		// New node added, fetch all keys from successor
 		// that belong to this node
-		getSuccFiles("/store/");
+		//getSuccFiles("/store/");
+		updateForNewNodeAddition();
 		return true;
 	}
 
@@ -403,7 +404,7 @@ namespace Chord
 		char *buffer = NULL;
 		int file_size = 0;
 
-		printf("Copy destination called, file_path = %s, file_name = %s,\n \
+		printf("copyToRemote: Copy destination called, file_path = %s, file_name = %s,\n \
 			     	dest = %s, target %s\n", 
 				file_path, file_name, dest, *getIpString(target.addr));
 		ifstream fin(file_path, ios::in | ios::binary );
@@ -658,6 +659,176 @@ namespace Chord
 		//printf("LOG: %llu pending requests\n", callbacks.getCount());
 	}
 
+
+
+        void LocalNode::copyToRemoteNew(const char * file_path, const char * file_name,
+                        const char * dest, NodeInfo target)
+        {
+                char *buffer = NULL;
+                int file_size = 0;
+
+                printf("Copy copyToRemoteNew called, file_path = %s, file_name = %s,\n \
+                                dest = %s, target %s\n",
+                                file_path, file_name, dest, *getIpString(target.addr));
+                ifstream fin(file_path, ios::in | ios::binary );
+                if (!fin) {
+                        cout<< "File not found!" <<endl;
+                        return;
+                }
+                fin.seekg(0, ios::end);
+                file_size = fin.tellg();
+                if(buffer = new char[file_size])
+                {
+                        memset(buffer, '0', file_size);
+                }
+                else{
+                        //TODO: handle out of memory
+                }
+                fin.seekg(0, ios::beg);
+                fin.read(buffer, file_size);
+                fin.close();
+
+                Request req = makeRequest(
+                        Request::UPDATE_NEWNODE_NODE_ADD,
+                        target
+                );
+                req.isCopyRemote = true;
+                req.sender = self.addr;
+                req.setSrc<NodeInfo>(self);
+                req.setBuff(0, buffer, file_size, file_name);
+                strcpy(req.destPath, dest);
+                delete[] buffer; // This memory allocation is no longer used
+                               // hence deleted
+                socket.write<Request>(req, req.recipient);
+        }
+
+        void LocalNode::updateForNewNodeAddition()
+        {
+                Request req = makeRequest(
+                        Request::UPDATE_SUCCONE_NODE_ADD,
+                        successor
+                );
+                req.buff_key = id;
+                req.sender = self.addr;
+                req.setSrc<NodeInfo>(self);
+                socket.write<Request>(req, req.recipient);
+        }
+
+        void LocalNode::getFileListNew(const char * path, vector<string>& file_list, uint32 check_key)
+        {
+                uint32 key = 0;
+                for (const auto & entry : fs::directory_iterator(path)) {
+                        string file_name = entry.path().filename();
+                        key = atoi(file_name.c_str());
+                        if (key != 0 && key <= check_key) {
+                                file_list.push_back(file_name);
+				//printf("LOG:getFileListNew file pushed:%d, node_key:%d\n", key, check_key);
+                        }
+                }
+        }
+
+        bool LocalNode::copyFilesToRemote(const char * src, const char * dest,
+			            NodeInfo target, vector<string>& file_list)
+        {
+                int key = 0;
+		bool isAnyFileSent = false;
+		auto itr_begin = file_list.begin();
+		auto itr_end = file_list.end();
+	        string src_str(src);			
+                for (; itr_begin != itr_end; ++itr_begin) {
+                        string file_name = *itr_begin;
+                        key = atoi(file_name.c_str());
+
+                        if (key != 0) {
+                                string src_file = src_str + file_name;
+                                copyToRemoteNew(src_file.c_str(), file_name.c_str(), dest, target);
+				isAnyFileSent = true;
+                        }
+                }
+		return isAnyFileSent;
+        }
+
+        bool LocalNode::copyFilesToLocal(const char * src, const char * dest,
+                                                 vector<string>& file_list)
+        {
+                int key = 0;
+                bool isAnyFileSent = false;
+                auto itr_begin = file_list.begin();
+                auto itr_end = file_list.end();
+		string src_str (src);
+
+                for (; itr_begin != itr_end; ++itr_begin) {
+                        string file_name = *itr_begin;
+                        key = atoi(file_name.c_str());
+
+                        if (key != 0) {
+				string new_src = src_str + file_name;
+				fs::copy(new_src.c_str(), dest, fs::copy_options::overwrite_existing);
+                        }
+                }
+        }
+
+        bool LocalNode::copyDirectoryRemoteNew(const char * src,
+			               const char * dest, NodeInfo target)
+        {
+                int key = 0;
+		bool isAnyFileSent = false;
+                for (const auto & entry : fs::directory_iterator(src)) {
+                        string file_name = entry.path().filename();
+                        key = atoi(file_name.c_str());
+
+                        if (key != 0) {
+                                copyToRemoteNew(entry.path().c_str(), file_name.c_str(), dest, target);
+				isAnyFileSent = true;
+                        }
+                }
+		return isAnyFileSent;
+        }
+
+        void LocalNode::removeLocalFiles(string& path, vector<string>& file_list)
+	{
+                auto itr_begin = file_list.begin();
+		auto itr_end = file_list.end();
+		for(; itr_begin != itr_end; ++itr_begin)
+		{
+			string file_name = path + *itr_begin;
+                        removeLocalFile(file_name);
+		}
+	}
+
+	bool LocalNode::transferFilesToNewNode(const Request & req, 
+			              const char * path, bool isKeyChkReq = false)
+	{
+		bool isAnyFileSent = false;
+		vector<string> file_list;
+		char file_path[MAX_FILE_NAME_SIZE];
+		file_list.clear();
+		const NodeInfo &new_node = req.getSrc<NodeInfo>();
+
+		if (true == isKeyChkReq)
+		{
+		        getFileListNew(path, file_list, id);
+                        //isAnyFileSent = copyFilesToRemote (path, path, predecessor, file_list);
+			isAnyFileSent = copyFilesToRemote (path, path, new_node, file_list);
+			if(isAnyFileSent)
+			{
+				string path_str(path);
+				removeLocalFiles(path_str, file_list);
+			}
+                        
+		}
+		else
+		{
+                        isAnyFileSent = copyDirectoryRemoteNew(path, path, new_node);
+			if(isAnyFileSent)
+				deleteDirectory(path);
+		}
+
+		return isAnyFileSent;
+		//TODO:take care of removing files
+	}
+
+
 	void LocalNode::handleRequest(const Request & req)
 	{
 		switch (req.type)
@@ -719,6 +890,30 @@ namespace Chord
 				       *getIpString(req.sender), req.id);
 			handleLeaveSucc(req);
 			break;
+
+		case Request::UPDATE_SUCCONE_NODE_ADD:
+                        printf("LOG: received UPDATE_SUCCONE_NODE_ADD from %s with id 0x%08x\n",
+                                       *getIpString(req.sender), req.id);
+			handleSuccOneForNodeAdd(req);
+			break;
+
+                case Request::UPDATE_SUCCTWO_NODE_ADD:
+                        printf("LOG: received UPDATE_SUCCTWO_NODE_ADD from %s with id 0x%08x\n",
+                                       *getIpString(req.sender), req.id);
+			handleSuccTwoForNodeAdd(req);
+                        break;
+
+                case Request::UPDATE_SUCCTHREE_NODE_ADD:
+                        printf("LOG: received UPDATE_SUCCTHREE_NODE_ADD from %s with id 0x%08x\n",
+                                       *getIpString(req.sender), req.id);
+			handleSuccThreeForNodeAdd(req);
+                        break;
+
+                case Request::UPDATE_NEWNODE_NODE_ADD:
+                        printf("LOG: received UPDATE_NEWNODE_NODE_ADD from %s with id 0x%08x\n",
+                                       *getIpString(req.sender), req.id);
+			handleNewNodeForNodeAdd(req);
+                        break;
 
 		default:
 			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
@@ -1097,5 +1292,81 @@ namespace Chord
 
 			socket.write<Request>(res, res.recipient);
 		}
+        }
+
+        void LocalNode::handleSuccOneForNodeAdd(const Request & req)
+        {
+                bool hasStoreTransfer = false;
+		bool hasCopyOneTransfer = false;
+		bool hasCopyTwoTransfer = false;
+                Request req_succ{req}; 
+		//update /copy2
+		hasCopyTwoTransfer = transferFilesToNewNode(req, "/store/copy2/");
+
+		//update /copy1
+                hasCopyOneTransfer = transferFilesToNewNode(req, "/store/copy1/");
+
+		//update /store
+		if (req.buff_key < id)
+		{
+	                hasStoreTransfer = transferFilesToNewNode(req, "/store/", true);
+		}
+
+		if (hasCopyTwoTransfer || hasCopyOneTransfer || hasStoreTransfer)
+		{
+			req_succ.type = Request::UPDATE_SUCCTWO_NODE_ADD;
+		//	req_succ.isCopyTwoUpdateRequired = hasCopyTwoTransfer;
+			req_succ.isCopyOneUpdateRequired = hasCopyOneTransfer;
+			req_succ.isStoreUpdateRequired = hasStoreTransfer;
+                        socket.write<Request>(req_succ,  successor.addr);
+		}
+
+	}
+
+        void LocalNode::handleSuccTwoForNodeAdd(const Request & req)
+        {
+		vector<string> file_list;
+		Request req_succ{req};
+
+                if (true == req.isCopyOneUpdateRequired)
+		{
+                        deleteDirectory("/store/copy2/");
+		}
+
+		if (true == req.isStoreUpdateRequired)
+		{
+			file_list.clear();
+                        getFileListNew("/store/copy1/", file_list, req.buff_key);
+			copyFilesToLocal("/store/copy1/", "/store/copy2/", file_list);
+			req_succ.type = Request::UPDATE_SUCCTHREE_NODE_ADD;
+			//handleSuccThreeForNodeAdd(req_succ, successor);
+			string path("/store/copy1/");
+			removeLocalFiles(path, file_list);
+			socket.write<Request>(req_succ,  successor.addr);
+		}
+        }
+
+        void LocalNode::handleSuccThreeForNodeAdd(const Request & req)
+        {
+                vector<string> file_list;
+		getFileListNew("/store/copy2/", file_list, req.buff_key);
+		deleteDirectory("/store/copy2/");
+        }
+
+        void LocalNode::handleNewNodeForNodeAdd(const Request & req)
+        {
+                char filepath[MAX_FILE_NAME];
+		memset(filepath, 0, MAX_FILE_NAME);
+		printf("handleNewNodeForNodeAdd: dst:%s fname:%s size:%ld\n", req.destPath,
+				                             req.file_name,  req.buff_size);
+                strcpy(filepath, req.destPath);
+                strcat(filepath, req.file_name);
+		//printf("handleNewNodeForNodeAdd: filepath:%s\n", filepath);
+
+
+                ofstream fout(filepath, ios::out | ios::binary);
+                fout.write (&req.file_buff[0], req.buff_size);
+                fout.close();
+
         }
 } // namespace Chord
