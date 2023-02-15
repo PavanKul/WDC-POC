@@ -807,12 +807,13 @@ namespace Chord
 
 		if (true == isKeyChkReq)
 		{
-		        getFileListNew(path, file_list, id);
+		        getFileListNew(path, file_list, req.buff_key);
                         //isAnyFileSent = copyFilesToRemote (path, path, predecessor, file_list);
 			isAnyFileSent = copyFilesToRemote (path, path, new_node, file_list);
 			if(isAnyFileSent)
 			{
 				string path_str(path);
+				copyFilesToLocal("/store/", "/store/copy1/", file_list);
 				removeLocalFiles(path_str, file_list);
 			}
                         
@@ -821,7 +822,15 @@ namespace Chord
 		{
                         isAnyFileSent = copyDirectoryRemoteNew(path, path, new_node);
 			if(isAnyFileSent)
+			{
+				std::string copy1("/store/copy1/");
+				std::string path_str (path);
+				if (path_str == copy1)
+				{
+			                copyDirectory("/store/copy1/", "/store/copy2/");	
+				}
 				deleteDirectory(path);
+			}
 		}
 
 		return isAnyFileSent;
@@ -1350,7 +1359,8 @@ namespace Chord
         {
                 vector<string> file_list;
 		getFileListNew("/store/copy2/", file_list, req.buff_key);
-		deleteDirectory("/store/copy2/");
+                string path("/store/copy2/");
+		removeLocalFiles(path, file_list);
         }
 
         void LocalNode::handleNewNodeForNodeAdd(const Request & req)
