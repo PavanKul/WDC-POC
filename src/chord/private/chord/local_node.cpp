@@ -330,22 +330,6 @@ namespace Chord
 		return out;
 	}
 
-
-	void LocalNode::getSuccFiles(const char * path)
-	{
-		Request req = makeRequest(
-                        Request::GETFILELIST,
-                        successor
-                );
-		//req.recipient = successor.addr;
-		strcpy(req.file_name, path);
-		req.buff_key = id;
-		req.sender = self.addr;
-		req.setSrc<NodeInfo>(self);
-		socket.write<Request>(req, req.recipient);
-		cout<<"In getSuccFiles \n";
-	}
-
 	void LocalNode::getFileList(const char * path, vector<string>& file_list, uint32 check_key)
 	{
 		uint32 key = 0;
@@ -888,12 +872,6 @@ namespace Chord
 			handleDelete(req);
 			break;
 
-		case Request::GETFILELIST:
-			printf("LOG: received GETFILELIST from %s with id 0x%08x path %s\n",
-				       *getIpString(req.sender), req.id, req.file_name);
-			handleGetFiles(req);
-			break;
-
 		case Request::LEAVESUCC:
 			printf("LOG: received LEAVESUCC from %s with id 0x%08x\n",
 				       *getIpString(req.sender), req.id);
@@ -955,97 +933,6 @@ namespace Chord
 			// Remove
 			callbacks.remove(it);
 		}
-	}
-
-	void LocalNode::handleGetFiles(const Request & req)
-	{
-		char file_path[MAX_FILE_NAME_SIZE];
-		const NodeInfo & src = req.getSrc<NodeInfo>();
-        	Request send{req};
-		vector<string> file_list;
-		strcpy(file_path, req.file_name);
-		int copy_type = 99;
-		if (strcmp(req.file_name, "/store/copy1/") == 0)
-			copy_type = 100;
-		else if (strcmp(req.file_name, "/store/copy2/") == 0)
-			copy_type = 101;
-		else
-			copy_type = 99;
-		file_list.clear();
-		/*getFileList(file_path, file_list, req.buff_key);
-		for (int i = 0; i < file_list.size(); i++) {
-			printf("LOG: sending file %s%s to %s\n", req.file_name,
-					file_list[i].c_str(), *getIpString(src.addr));
-			copy(req.file_name, file_list[i].c_str(), src, copy_type);
-			strcpy(file_path, req.file_name);
-			strcat(file_path, file_list[i].c_str());
-			removeLocalFile(string(file_path));
-		}*/
-
-		if (req.buff_key < id || copy_type > 99) {
-			file_list.clear();
-			getFileList(file_path, file_list, req.buff_key);
-			for (int i = 0; i < file_list.size(); i++) {
-				printf("LOG: sending file %s%s to %s\n", req.file_name,
-						file_list[i].c_str(), *getIpString(src.addr));
-				copy(req.file_name, file_list[i].c_str(), src, copy_type);
-				strcpy(file_path, req.file_name);
-				strcat(file_path, file_list[i].c_str());
-				removeLocalFile(string(file_path));
-			}
-		}
-
-		if (copy_type == 99) {
-			// Also copy all files from copy1 and copy2 directories
-			file_list.clear();
-			printf("Sending all copy1 and copy2 to %s\n", *getIpString(src.addr));
-			getFileList("/store/copy1/", file_list, 0xffffffff); // Giving max value
-			for (int i = 0; i < file_list.size(); i++) {
-				printf("LOG: sending file %s%s to %s\n", "/store/copy1/",
-						file_list[i].c_str(), *getIpString(src.addr));
-				copy("/store/copy1/", file_list[i].c_str(), src, 100);
-				strcpy(file_path, "/store/copy1/");
-				strcat(file_path, file_list[i].c_str());
-				removeLocalFile(string(file_path));
-			}
-			file_list.clear();
-			getFileList("/store/copy2/", file_list, 0xffffffff); // Giving max value
-			for (int i = 0; i < file_list.size(); i++) {
-				printf("LOG: sending file %s/%s to %s\n", "/store/copy2/",
-						file_list[i].c_str(), *getIpString(src.addr));
-				copy("/store/copy2/", file_list[i].c_str(), src, 101);
-				strcpy(file_path, "/store/copy2/");
-				strcat(file_path, file_list[i].c_str());
-				removeLocalFile(string(file_path));
-			}
-		}
-
-		if (copy_type == 100) {
-			// copy all from copy2 directory
-			printf("Sending all copy2 to %s\n", *getIpString(src.addr));
-			file_list.clear();
-			getFileList("/store/copy2/", file_list, 0xffffffff); // Giving max value
-			for (int i = 0; i < file_list.size(); i++) {
-				printf("LOG: sending file %s/%s to %s\n", req.file_name,
-						file_list[i].c_str(), *getIpString(src.addr));
-				copy("/store/copy2/", file_list[i].c_str(), src, 101);
-				strcpy(file_path, "/store/copy2/");
-				strcat(file_path, file_list[i].c_str());
-				removeLocalFile(string(file_path));
-			}
-		}
-
-		if (99 == copy_type)
-			strcpy(send.file_name, "/store/copy1/");
-		else if (100 == copy_type)
-			strcpy(send.file_name, "/store/copy2/");
-		else
-			return;
-		send.sender = self.addr;
-		send.recipient = successor.addr;
-            	send.setSrc<NodeInfo>(self);	
-		printf("Sending GetFilList to %s with path %s\n", *getIpString(send.recipient), send.file_name); 
-                socket.write<Request>(send, send.recipient);
 	}
 
 	void LocalNode::handleLookup(const Request & req)
