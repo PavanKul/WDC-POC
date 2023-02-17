@@ -120,7 +120,8 @@ int32 main(int32 argc, char ** argv)
 
 	char line[256] = {};
 	printf("User options: \np = Print Info, \nl = Lookup, \nq = Leave node, \
-			\nw = Write file, \nr = Read file, \ns = Show files, \nd = Delete file\n");
+			\nw = Write file, \nr = Read file, \ns = Show files, \nd = Delete file,"
+			"\ng = get file list from any other node\n");
 
 	char c; do
 	{
@@ -410,6 +411,17 @@ int32 main(int32 argc, char ** argv)
                         mysql_close(conn);
                         break;
 		}
+
+		case 'g':
+		{
+			int key = 0;
+			string s = "";
+			cout << "Enter the key or 0 if targetting to successor : " << endl;
+			cin >> key;
+
+			localNode.getFileList(key);
+			break;
+		}		
 
 		default:
 			break;

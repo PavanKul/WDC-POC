@@ -71,7 +71,7 @@ namespace Chord
                 char file_name[MAX_FILE_NAME_LENGTH];
                 char destPath[MAX_FILE_NAME_LENGTH];
                 bool isRead = false;
-
+                bool isFileList = false;
 		/// for redundancy WRITE
 		bool isDest = true;
 		bool isSucc1 = false;
