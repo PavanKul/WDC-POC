@@ -8,7 +8,7 @@
 #include "math/uuid_generator.h"
 #include <vector>
 
-#define MAX_FILE_NAME 2048
+#define MAX_FILE_NAME 10240
 #define MAX_FILE_NAME_SIZE 296
 
 using namespace std;
@@ -229,6 +229,7 @@ namespace Chord
 		 * Get the file list from a node from the cluster.
 		 * If no node specified, list will be fetched from
 		 * successor node*/
+		 void getFileList(uint32 key);
 		void getSuccFiles(const char * path);
 
 
