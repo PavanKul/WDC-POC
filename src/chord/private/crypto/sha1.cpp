@@ -22,6 +22,8 @@ void Crypto::sha1(const String & str, uint32 hash[5])
 	const uint32 align		= Math::alignUp(len + 1, 0x40);
 	const uint32 padding	= align - len;
 	data.resize(align);
+	if (padding < 8)
+		return;
 	PlatformMemory::memset(*data + len + 1, 0x0, padding - 8);
 
 	// Append message length

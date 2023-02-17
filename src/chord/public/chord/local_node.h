@@ -6,9 +6,12 @@
 #include "types.h"
 #include "request.h"
 #include "math/uuid_generator.h"
+#include <vector>
 
-#define MAX_FILE_NAME 296
+#define MAX_FILE_NAME 2048
+#define MAX_FILE_NAME_SIZE 296
 
+using namespace std;
 namespace Chord
 {
 	/**
@@ -56,6 +59,9 @@ namespace Chord
 
 		/// The index of the finger we'll update
 		uint32 nextFinger;
+
+		/// To identify whether the node is predecessor of removed node
+		bool isPredOfRemovedNode = false;
 
 		/// Mutex variables
 		/// @{
@@ -153,7 +159,50 @@ namespace Chord
                  * @param [in] a  key, buffer & buffer size
                  * @return void
                  */
-                 void write(uint32 key, char* buff, size_t size);
+                 void write(uint32 key, char* buff, size_t size,
+				 const NodeInfo target, const char *file_name = NULL, int write_type = 0);
+
+		 /**
+                 * getWritePath  will set the file path for write operation
+                 *
+                 * @param [in] a req structure and filepath for storing path
+                 * @return void
+                 */
+		 void getWritePath(Request & res, char* filepath);
+
+		 /**
+                 * copy will send a file to destination
+                 *
+                 * @param [in] file_name
+                 * @return void
+                 */
+                 void copy(const char *file_path, const char * file_name, const NodeInfo target, const int copy_type);
+
+		 void removeLocalFile(string file_name);
+                 void getFileList(const char * path, vector<string>& file_list, uint32 key = 0xFFFFFFFF);
+                 void copyDirectory(const char * src, const char * dest);
+		 void copyDirectoryRemote(const char * src, const char * dest, NodeInfo target);
+		 void copyToRemote(const char * file_path, const char *file_name,
+				 const char * dest, NodeInfo target);
+		 void deleteDirectory(const char * src);
+		 void leaveSucc();
+
+		 /**
+                 * Following functions added for re-design of node addition (redundency) 
+		 */
+                 void copyToRemoteNew(const char * file_path, const char * file_name,
+                                                  const char * dest, NodeInfo target);
+                 void updateForNewNodeAddition();
+                 void getFileListNew(const char * path, vector<string>& file_list, uint32 check_key);
+                 bool copyFilesToRemote(const char * src, const char * dest,
+                                         NodeInfo target, vector<string> & file_list);
+                 bool copyFilesToLocal(const char * src, const char * dest,
+                                                       vector<string>& file_list);
+                 bool copyDirectoryRemoteNew(const char * src,
+                                                const char * dest, NodeInfo target);
+                 void removeLocalFiles(string& path, vector<string>& file_list);
+                 bool transferFilesToNewNode(const Request & req,
+                                         const char * path, bool isKeyChkReq);	 
 
                  /**
                  * read will send a read request to destination
@@ -169,12 +218,19 @@ namespace Chord
                   * @param [in] a key (corresponds to a file)
                   * @return void
                   */
-                 void deleteFile(uint32 key, const char* file_name);
+                void deleteFile(uint32 key, const char* file_name);
 
 		/**
 		 * Leave chord ring
 		 */
 		void leave();
+
+		/**
+		 * Get the file list from a node from the cluster.
+		 * If no node specified, list will be fetched from
+		 * successor node*/
+		void getSuccFiles(const char * path);
+
 
 	protected:
 		/**
@@ -229,6 +285,13 @@ namespace Chord
 		void handleWrite(const Request & req);
 		void handleRead(const Request & req);
 		void handleDelete(const Request & req);
+		void handleGetFileList(const Request & req);
+		void handleGetFiles(const Request & req);
+		void handleLeaveSucc(const Request & req);
+		void handleSuccOneForNodeAdd(const Request & req);
+		void handleSuccTwoForNodeAdd(const Request & req);
+		void handleSuccThreeForNodeAdd(const Request & req);
+		void handleNewNodeForNodeAdd(const Request & req);
 		/// @}
 		
 	public:

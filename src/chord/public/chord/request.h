@@ -2,6 +2,7 @@
 
 #include "chord_fwd.h"
 #include "templates/reference.h"
+#include <vector>
 
 #define MAX_FILE_SIZE 20480 // 20 KB
 #define MAX_FILE_NAME_LENGTH 32
@@ -25,7 +26,15 @@ namespace Chord
 			CHECK,
 			WRITE,
 			READ,
-			DELETE
+			DELETE,
+			COPY,
+			GETFILELIST,
+			REMOVE,
+			LEAVESUCC,
+			UPDATE_SUCCONE_NODE_ADD,
+			UPDATE_SUCCTWO_NODE_ADD,
+			UPDATE_SUCCTHREE_NODE_ADD,
+			UPDATE_NEWNODE_NODE_ADD
 		};
 		
 		/// Request type
@@ -60,16 +69,31 @@ namespace Chord
                 size_t buff_size; //TODO:this should be removed later andd add in socket itself
                 uint32 buff_key;
                 char file_name[MAX_FILE_NAME_LENGTH];
+                char destPath[MAX_FILE_NAME_LENGTH];
                 bool isRead = false;
+
+		/// for redundancy WRITE
+		bool isDest = true;
+		bool isSucc1 = false;
+		bool isSucc2 = false;
+		bool isGetFile = false;
+		bool isCopyRemote = false;
+
+		///for redundancy Node addition (Redesign)
+		bool isCopyTwoUpdateRequired = false;
+		bool isCopyOneUpdateRequired = false;
+		bool isStoreUpdateRequired = false;
 
 	public:
 		///setting the file buffer
-		void setBuff(uint32 key, char* buff, size_t size)
+		void setBuff(uint32 key, char* buff, size_t size, const char *fname)
 	        {
 	            	buff_size = size;
 		    	buff_key = key;
 			memset(file_buff, '0', buff_size);
 			memcpy (file_buff, buff, size);
+			if (fname != NULL)
+				strcpy(file_name, fname);
 	        }
 		/// Returns whether request is expired
 		FORCE_INLINE bool isExpired() const
