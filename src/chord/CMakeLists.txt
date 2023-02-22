@@ -6,6 +6,7 @@ file(GLOB_RECURSE SOURCES
 	private/*.cpp
 	private/*.cxx
 	private/DB/*.cpp
+	private/chord/Logger.cpp
 )
 file(GLOB_RECURSE HEADERS public
 

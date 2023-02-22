@@ -4,6 +4,7 @@
 #include <fstream>
 #include <filesystem>
 #include <dirent.h>
+#include "chord/Logger.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -47,8 +48,10 @@ namespace Chord
 			predecessor = self;
 			for (uint32 i = 0; i < 32; ++i)
 				fingers[i] = self;
-
-			printf("INFO: created node %s\n", *self.getInfoString());
+			char logbuffer[1024];
+			const string s= logbuffer;
+			sprintf(logbuffer,"%s",*self.getInfoString());
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "created node" + std::string(logbuffer), FILE_LOG);
 			return true;
 		}
 
@@ -97,8 +100,10 @@ namespace Chord
 		char path[MAX_FILE_SIZE];
 		char *buffer = NULL;
 		int file_size = 0;
-		printf("Copy func called, file_path = %s, file_name = %s, dest = %s\n", 
-				file_path, file_name, *getIpString(target.addr));
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"%s %s %s",file_path, file_name,*getIpString(target.addr));
+		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "Copy func called, file_path,file_name, dest" +std::string(logbuffer) , FILE_LOG);
 		strcpy(path, file_path);
 		strcat(path, file_name);
 		ifstream fin(path, ios::in | ios::binary );
@@ -167,7 +172,10 @@ namespace Chord
 		else {
 			auto dest  = lookup(key);
 			dest_node = dest.get();
-			printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s",*dest.get().getInfoString());
+			Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "RESULT: found key 0x%08x @" + std::string(logbuffer), FILE_LOG);
 		}
 	    	Request req = makeRequest(
 			Request::WRITE,
@@ -213,7 +221,10 @@ namespace Chord
 
                 auto dest  = lookup(key);
                 auto dest_node = dest.get();
-                printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"0x%08x %s",key, *dest.get().getInfoString());
+		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "RESULT: found key" + std::string(logbuffer), FILE_LOG);
                 Request req = makeRequest(
                         Request::READ,
                         dest_node);
@@ -229,7 +240,10 @@ namespace Chord
         {
         	auto dest  = lookup(key);
         	auto dest_node = dest.get();
-        	printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"0x%08x %s",key, *dest.get().getInfoString());
+		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "RESULT: found key" + std::string(logbuffer), FILE_LOG);
         	Request req = makeRequest(
         			Request::DELETE,
         			dest_node);
@@ -265,7 +279,10 @@ namespace Chord
             	auto dest  = lookup(key);
             	auto dest_node = dest.get();
             	req.recipient = dest_node.addr;
-            	printf("RESULT: found key 0x%08x @ [%s]\n", key, *dest.get().getInfoString());
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"0x%08x %s",key, *dest.get().getInfoString());
+		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "RESULT: found key" + std::string(logbuffer), FILE_LOG);
         	}
         	else // Send to successor
         		req.recipient = successor.addr;
@@ -309,8 +326,10 @@ namespace Chord
 
 		// Set successor
 		successor = res.getDst<NodeInfo>();
-
-		printf("INFO: connected with successor %s\n", *successor.getInfoString());
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"%s",*successor.getInfoString());
+		Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "INFO: connected with successor" + std::string(logbuffer), FILE_LOG);
 		// New node added, fetch all keys from successor
 		// that belong to this node
 		//getSuccFiles("/store/");
@@ -420,10 +439,10 @@ namespace Chord
 	{
 		char *buffer = NULL;
 		int file_size = 0;
-
-		printf("copyToRemote: Copy destination called, file_path = %s, file_name = %s,\n \
-			     	dest = %s, target %s\n", 
-				file_path, file_name, dest, *getIpString(target.addr));
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"%s %s %s",file_path, file_name,*getIpString(target.addr));
+		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "Copy destination called, file_path, file_name, dest target" + std::string(logbuffer), FILE_LOG);
 		ifstream fin(file_path, ios::in | ios::binary );
 		if (!fin) {
 			cout<< "File not found!" <<endl;
@@ -508,8 +527,10 @@ namespace Chord
 				{
 					// Update successor
 					setSuccessor(target);
-
-					//printf("LOG: new successor is %s\n", *successor.getInfoString());
+					char logbuffer[1024];
+		                        const string s= logbuffer;
+                		        sprintf(logbuffer,"%s",*successor.getInfoString());
+                        		Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "new successor is " + std::string(logbuffer), FILE_LOG);
 				}
 			}
 		);
@@ -532,8 +553,10 @@ namespace Chord
 		{
 			// Update finger
 			setFinger(successor, i);
-			
-			//printf("LOG: updating finger #%u with %s\n", i, *fingers[i].getInfoString());
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"#%u %s" ,i, *fingers[i].getInfoString());
+                        Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "updating finger with string" + std::string(logbuffer), FILE_LOG);
 		}
 		else
 		{
@@ -547,8 +570,10 @@ namespace Chord
 
 					// Update finger
 					setFinger(req.getDst<NodeInfo>(), i);
-
-					//printf("LOG: updating finger #%u with %s\n", i, *fingers[i].getInfoString());
+					char logbuffer[1024];
+		                        const string s= logbuffer;
+                		        sprintf(logbuffer,"#%u %s" ,i, *fingers[i].getInfoString());
+                        		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "updating finger with string " + std::string(logbuffer), FILE_LOG);
 				}
 				// * checkPeer(next) on error
 			);
@@ -595,8 +620,11 @@ namespace Chord
 		
 		if (peer.id == successor.id)
 		{
-			printf("Successor %s removed\n", *peer.getInfoString());
 			// ! I don't think this actually works
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s",*peer.getInfoString());
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "Successor removed" + std::string(logbuffer), FILE_LOG);
 			isPredOfRemovedNode = true;
 			setSuccessor(self);
 			// Reset successor temporarily
@@ -608,7 +636,10 @@ namespace Chord
 					
 					setSuccessor(req.getDst<NodeInfo>());
 					//copyDirectoryRemote("/store/copy1/", "/store/copy2/", successor);
-					printf("LOG: new successor is %s\n", *successor.getInfoString());
+					char logbuffer[1024];
+                        		const string s= logbuffer;
+                        		sprintf(logbuffer,"%s",*successor.getInfoString());
+			 		Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "new successor is" + std::string(logbuffer), FILE_LOG);
 				}
 			);
 			req.setDst<uint32>(id + 1);
@@ -620,8 +651,10 @@ namespace Chord
 			if (peer.id == fingers[i].id)
 				// Unset finger
 				setFinger(self, i);
-		
-		printf("LOG: removed node %s from local view\n", *peer.getInfoString());
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"%s",*peer.getInfoString());
+		Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "removed node string from local view" + std::string(logbuffer), FILE_LOG);
 	}
 
 	void LocalNode::checkPeer(const NodeInfo & peer)
@@ -668,12 +701,16 @@ namespace Chord
 
 				// Remove expired callback
 				callbacks.remove(it);
-
-				//printf("LOG: no reply received for request with id %08x\n", id);
+				char logbuffer[1024];
+	                        const string s= logbuffer;
+        	                sprintf(logbuffer,"%08x",id);
+                	        Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "no reply recieved for request with id: " + std::string(logbuffer), FILE_LOG);
 			}
 		}
-
-		//printf("LOG: %llu pending requests\n", callbacks.getCount());
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"%llu",callbacks.getCount());
+                Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "pending requests : " + std::string(logbuffer), FILE_LOG);	
 	}
 
 
@@ -683,10 +720,10 @@ namespace Chord
         {
                 char *buffer = NULL;
                 int file_size = 0;
-
-                printf("Copy copyToRemoteNew called, file_path = %s, file_name = %s,\n \
-                                dest = %s, target %s\n",
-                                file_path, file_name, dest, *getIpString(target.addr));
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"%s %s %s %s",file_path, file_name, dest, *getIpString(target.addr));
+		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "Copy copyToRemoteNew called: " + std::string(logbuffer), FILE_LOG);
                 ifstream fin(file_path, ios::in | ios::binary );
                 if (!fin) {
                         cout<< "File not found!" <<endl;
@@ -890,58 +927,83 @@ namespace Chord
 			handleCheck(req);
 			break;
 		
-		case Request::WRITE:
-            		printf("LOG: received WRITE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+		case Request::WRITE:{
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s 0x%08x",*getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "received WRITE from string with id " + std::string(logbuffer), FILE_LOG);
             		handleWrite(req);
-            		break;
+            		break;}
 
-                case Request::READ:
-                        printf("LOG: received READ from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+                case Request::READ:{
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s 0x%08x",*getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "received READ from string with id " + std::string(logbuffer), FILE_LOG);
                         handleRead(req);
-                        break;
+                        break;}
 
-		case Request::DELETE:
-			printf("LOG: received DELETE from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+		case Request::DELETE:{
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s 0x%08x",*getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "received DELETE from string with id " + std::string(logbuffer), FILE_LOG);
 			handleDelete(req);
-			break;
+			break;}
 
-                case Request::GETFILELIST:
+                case Request::GETFILELIST:{
 			handleGetFileList(req);
-			printf("LOG: received GETFILELIST from %s with id 0x%08x\n",
-					*getIpString(req.sender), req.id);
-			break;
-		case Request::LEAVESUCC:
-			printf("LOG: received LEAVESUCC from %s with id 0x%08x\n",
-				       *getIpString(req.sender), req.id);
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s  0x%08x",*getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "received GETFILELIST from with id path " + std::string(logbuffer), FILE_LOG);
+			break;}
+
+		case Request::LEAVESUCC:{
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s 0x%08x",*getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "received LEAVESUCC from string with id " + std::string(logbuffer), FILE_LOG);
 			handleLeaveSucc(req);
-			break;
+			break;}
 
-		case Request::UPDATE_SUCCONE_NODE_ADD:
-                        printf("LOG: received UPDATE_SUCCONE_NODE_ADD from %s with id 0x%08x\n",
-                                       *getIpString(req.sender), req.id);
+		case Request::UPDATE_SUCCONE_NODE_ADD:{
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s 0x%08x",*getIpString(req.sender), req.id);
+                        Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "recieved UPDATE_SUCCONE_NODE_ADD from string with id:" + std::string(logbuffer), FILE_LOG);
 			handleSuccOneForNodeAdd(req);
-			break;
+			break;}
 
-                case Request::UPDATE_SUCCTWO_NODE_ADD:
-                        printf("LOG: received UPDATE_SUCCTWO_NODE_ADD from %s with id 0x%08x\n",
-                                       *getIpString(req.sender), req.id);
+                case Request::UPDATE_SUCCTWO_NODE_ADD:{
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s 0x%08x",*getIpString(req.sender), req.id);
+                        Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "recieved UPDATE_SUCCTWO_NODE_ADD from string with id:" + std::string(logbuffer), FILE_LOG);
 			handleSuccTwoForNodeAdd(req);
-                        break;
+                        break;}
 
-                case Request::UPDATE_SUCCTHREE_NODE_ADD:
-                        printf("LOG: received UPDATE_SUCCTHREE_NODE_ADD from %s with id 0x%08x\n",
-                                       *getIpString(req.sender), req.id);
+                case Request::UPDATE_SUCCTHREE_NODE_ADD:{
+			char logbuffer[1024];
+                	const string s= logbuffer;
+                	sprintf(logbuffer,"%s 0x%08x", *getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "recieved UPDATE_SUCCTHREE_NODE_ADD from string with id: " + std::string(logbuffer), FILE_LOG);
 			handleSuccThreeForNodeAdd(req);
-                        break;
+                        break;}
 
-                case Request::UPDATE_NEWNODE_NODE_ADD:
-                        printf("LOG: received UPDATE_NEWNODE_NODE_ADD from %s with id 0x%08x\n",
-                                       *getIpString(req.sender), req.id);
+                case Request::UPDATE_NEWNODE_NODE_ADD:{
+			char logbuffer[1024];
+                	const string s= logbuffer;
+                	sprintf(logbuffer,"%s 0x%08x ",*getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "recieved UPDATE_NEWNODE_NODE_ADD from string with id" + std::string(logbuffer), FILE_LOG);
 			handleNewNodeForNodeAdd(req);
-                        break;
+                        break;}
 
 		default:
-			printf("LOG: received UNKOWN from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s 0x%08x",*getIpString(req.sender), req.id);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "received UNKOWN from string with id " + std::string(logbuffer), FILE_LOG);
 			break;
 		}
 	}
@@ -1039,8 +1101,10 @@ namespace Chord
 		{
 			// Update predecessor
 			setPredecessor(src);
-
-			//printf("LOG: new predecessor is %s\n", *predecessor.getInfoString());
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s",*predecessor.getInfoString());
+                        Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "new predecessor" + std::string(logbuffer), FILE_LOG);
 		}
 	}
 
@@ -1081,7 +1145,10 @@ namespace Chord
 		if (req.isCopyRemote) {
 			strcpy(filepath, req.destPath);
 			strcat(filepath, req.file_name);
-			printf("Copy to remote received: %s %s\n", req.destPath, req.file_name);
+			char logbuffer[1024];
+                        const string s= logbuffer;
+                        sprintf(logbuffer,"%s %s",req.destPath,req.file_name);
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, "Copy to remote received: + req.destPath " + std::string(logbuffer), FILE_LOG);
 			ofstream fout(filepath, ios::out | ios::binary);
     			fout.write (&req.file_buff[0], req.buff_size);
 			fout.close();
@@ -1108,7 +1175,10 @@ namespace Chord
 			if (0 == req.buff_key) {
 				filename = string(req.file_name);
 				//strcat(filepath, filename.c_str());
-				printf("Received file %s %s as copy\n", filepath, req.file_name);
+				char logbuffer[1024];
+                        	const string s= logbuffer;
+                        	sprintf(logbuffer,"%s %s", filepath, req.file_name);
+                        	Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "Recieved file as copy: " + std::string(logbuffer), FILE_LOG);
 			}
 			else
 				filename = to_string(req.buff_key);
@@ -1161,7 +1231,10 @@ namespace Chord
 			strcat(file_name, req.file_name);
 		}
                 int file_size = 0;
-		printf("handleRead key = %u file_name = %s\n", req.buff_key, file_name);
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer," %u %s",req.buff_key,file_name);
+		Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "handleRead key,file_name, req.buff_key " + std::string(logbuffer), FILE_LOG);
                 ifstream fin(file_name, ios::in | ios::binary );
 		if (!fin)
 		{
@@ -1188,13 +1261,13 @@ namespace Chord
                         }
                         else
                         {
-                                printf("File is larger than the max allowed size\n");
+				Logger::getInstance()->chord_print(LOG_LEVEL_ERROR, "File is larger than the max allowed size\n", FILE_LOG);
                         }
                         fin.close();
                 }
                 else
                 {
-                        printf("File is not present in /store/\n");
+			Logger::getInstance()->chord_print(LOG_LEVEL_ERROR, "File is not present in /store/\n", FILE_LOG);
                 }
                 res.isRead = true;
                 res.type = Request::WRITE; 
@@ -1326,8 +1399,10 @@ namespace Chord
         {
                 char filepath[MAX_FILE_NAME];
 		memset(filepath, 0, MAX_FILE_NAME);
-		printf("handleNewNodeForNodeAdd: dst:%s fname:%s size:%ld\n", req.destPath,
-				                             req.file_name,  req.buff_size);
+		char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer,"%s %s %ld",req.destPath, req.file_name, req.buff_size);
+                Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, "handleNewNodeForNodeAdd with dest, filename and buffer size: " + std::string(logbuffer), FILE_LOG);
                 strcpy(filepath, req.destPath);
                 strcat(filepath, req.file_name);
 		//printf("handleNewNodeForNodeAdd: filepath:%s\n", filepath);
