@@ -7,6 +7,7 @@
 #include "request.h"
 #include "math/uuid_generator.h"
 #include <vector>
+#include "chord/Logger.h"
 
 #define MAX_FILE_NAME 10240
 #define MAX_FILE_NAME_SIZE 296
@@ -23,6 +24,7 @@ namespace Chord
 	{
 		friend ReceiveTask;
 		friend UpdateTask;
+		friend Logger;
 
 	protected:
 		union
