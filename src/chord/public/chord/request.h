@@ -34,7 +34,9 @@ namespace Chord
 			UPDATE_SUCCONE_NODE_ADD,
 			UPDATE_SUCCTWO_NODE_ADD,
 			UPDATE_SUCCTHREE_NODE_ADD,
-			UPDATE_NEWNODE_NODE_ADD
+			UPDATE_NEWNODE_NODE_ADD,
+			WRITE_NEW,
+			READ_NEW
 		};
 		
 		/// Request type
@@ -83,6 +85,10 @@ namespace Chord
 		bool isCopyTwoUpdateRequired = false;
 		bool isCopyOneUpdateRequired = false;
 		bool isStoreUpdateRequired = false;
+
+		//New design (Shriram suggested)
+		uint32 fingerTableIndex = 1;
+                uint32 org_src; //original src id
 
 	public:
 		///setting the file buffer

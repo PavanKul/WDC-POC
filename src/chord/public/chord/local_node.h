@@ -234,6 +234,12 @@ namespace Chord
 		 void getFileList(uint32 key);
 		void getSuccFiles(const char * path);
 
+		/**
+		 * Added as part of new design suggested by Shriram
+		 */
+		void write_new(uint32 key, char* buff, size_t size,
+                        const NodeInfo target, const char *file_name = NULL);
+                bool getNextNode(Request& req,  NodeInfo& nextNode);
 
 	protected:
 		/**
@@ -295,6 +301,8 @@ namespace Chord
 		void handleSuccTwoForNodeAdd(const Request & req);
 		void handleSuccThreeForNodeAdd(const Request & req);
 		void handleNewNodeForNodeAdd(const Request & req);
+		/*Added as part of new design suggested by Shriram*/
+		void handleWrite_new(const Request & req);
 		/// @}
 		
 	public:

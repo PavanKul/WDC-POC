@@ -215,6 +215,61 @@ namespace Chord
 			       // hence deleted
             	socket.write<Request>(req, req.recipient);
         }
+        void LocalNode::write_new(uint32 key, char* buff, size_t size,
+                        const NodeInfo target, const char *file_name)
+        {
+		char logbuffer[1024];
+                NodeInfo dest_node;
+                //find receipient
+                if (0 == key) {
+                        dest_node = target;
+                }
+                else {
+                        auto dest  = lookup(key);
+                        dest_node = dest.get();
+                        sprintf(logbuffer,"%s",*dest.get().getInfoString());
+                        Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, 
+				"RESULT: found key 0x%08x @" + std::string(logbuffer), FILE_LOG);
+                }
+                Request req = makeRequest(
+                        Request::WRITE_NEW,
+                        dest_node
+                );
+                req.sender = self.addr;
+                req.setSrc<NodeInfo>(self);
+		req.org_src = dest_node.id;
+                //copy buff to req.buff
+                req.setBuff(key, buff, size, file_name);
+                delete[] buff; // This memory allocation is no longer used
+                               // hence deleted
+                socket.write<Request>(req, req.recipient);
+        }
+
+	bool LocalNode::getNextNode(Request& req,  NodeInfo& nextNode)
+	{
+		printf("Entering getNextNode\n");
+		uint32 fileFingerKeyOffset = 1<<req.fingerTableIndex;
+		uint32 fileFingerKey = req.buff_key + fileFingerKeyOffset;
+
+		const uint32 offset = fileFingerKey - id;
+                for (uint32 i = req.fingerTableIndex + 1; i < 32; ++i)
+		{
+			nextNode = findSuccessor(fileFingerKey);
+			if ((id != nextNode.id) && (req.org_src != nextNode.id))
+			{
+				printf("Got Node:id=%d, nextNode.id=%d, req.org_src=%d\n",
+						id, nextNode.id, req.org_src);
+				req.fingerTableIndex = i;
+			        return true;
+			}
+			fileFingerKeyOffset = fileFingerKeyOffset <<1;
+			fileFingerKey = req.buff_key + fileFingerKeyOffset;
+		}
+
+                // Return false if cannot find a next node
+                return false;
+
+	}
 
         void LocalNode::read( uint32 key, const char* file_name)
         {
@@ -935,6 +990,11 @@ namespace Chord
             		handleWrite(req);
             		break;}
 
+                case Request::WRITE_NEW:{
+			printf("LOG: received WRITE_NEW from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+                        handleWrite_new(req);
+                        break;}
+
                 case Request::READ:{
 			char logbuffer[1024];
                         const string s= logbuffer;
@@ -1214,6 +1274,36 @@ namespace Chord
 			}
 		}
     	}
+
+        void LocalNode::handleWrite_new(const Request & req)
+        {
+                Request sender{req};
+                Request res{req};
+                char filepath[MAX_FILE_NAME];
+                string filename;
+                strcpy(filepath, "/store/");
+
+                if (0 == req.buff_key)
+		{
+                        filename = string(req.file_name);
+                }
+                else
+		{
+                        filename = to_string(req.buff_key);
+                }
+                strcat(filepath, filename.c_str());
+                ofstream fout(filepath, ios::out | ios::binary);
+                fout.write (&req.file_buff[0], req.buff_size);
+                fout.close();
+                NodeInfo nextNode;
+		bool hasNext = getNextNode(res, nextNode);
+		if (true == hasNext)
+		{
+                        res.sender = self.addr;
+                        res.recipient = nextNode.addr;
+                        socket.write<Request>(res, res.recipient);
+		}
+        }
 
         void LocalNode::handleRead(const Request & req)
         {
