@@ -156,7 +156,8 @@ int32 main(int32 argc, char ** argv)
 
                         printf("File key: 0x%08x\n", hash[0]);
 
-			localNode.write(hash[0], buffer, file_size, temp); // temp will not be used
+			//localNode.write(hash[0], buffer, file_size, temp); // temp will not be used
+			localNode.write_new(hash[0], buffer, file_size, temp);
 			if (dbIns)
 				flag = dbIns->insertToFileList((char*)fileName.c_str(), hash[0]);
                         }
