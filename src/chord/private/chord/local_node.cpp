@@ -215,6 +215,62 @@ namespace Chord
 			       // hence deleted
             	socket.write<Request>(req, req.recipient);
         }
+        void LocalNode::write_new(uint32 key, char* buff, size_t size,
+                        const NodeInfo target, const char *file_name)
+        {
+		char logbuffer[1024];
+                NodeInfo dest_node;
+                //find receipient
+                if (0 == key) {
+                        dest_node = target;
+                }
+                else {
+                        auto dest  = lookup(key);
+                        dest_node = dest.get();
+                        sprintf(logbuffer,"%s",*dest.get().getInfoString());
+                        Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, 
+				"RESULT: found key 0x%08x @" + std::string(logbuffer), FILE_LOG);
+                }
+                Request req = makeRequest(
+                        Request::WRITE_NEW,
+                        dest_node
+                );
+                req.sender = self.addr;
+                req.setSrc<NodeInfo>(self);
+		req.org_src = dest_node.id;
+                //copy buff to req.buff
+                req.setBuff(key, buff, size, file_name);
+                delete[] buff; // This memory allocation is no longer used
+                               // hence deleted
+                socket.write<Request>(req, req.recipient);
+        }
+
+	bool LocalNode::getNextNode(Request& req,  NodeInfo& nextNode)
+	{
+		printf("Entering getNextNode\n");
+		uint32 fileFingerKeyOffset = 1<<req.fingerTableIndex;
+		uint32 fileFingerKey = req.buff_key + fileFingerKeyOffset;
+
+                for (uint32 i = req.fingerTableIndex ; i < 32; ++i)
+		{
+			printf("i:%d FileKey:%d,fileFingerKey:%d,fileFingerKeyOffset:%d\n",
+					i, req.buff_key, fileFingerKey, fileFingerKeyOffset);
+			nextNode = findSuccessor(fileFingerKey);
+			if ((id != nextNode.id) && (req.org_src != nextNode.id))
+			{
+				printf("Got Node:id=%d, nextNode.id=%d, req.org_src=%d\n",
+						id, nextNode.id, req.org_src);
+				req.fingerTableIndex = i+1;
+			        return true;
+			}
+			fileFingerKeyOffset = fileFingerKeyOffset <<1;
+			fileFingerKey = req.buff_key + fileFingerKeyOffset;
+		}
+
+                // Return false if cannot find a next node
+                return false;
+
+	}
 
         void LocalNode::read( uint32 key, const char* file_name)
         {
@@ -231,6 +287,24 @@ namespace Chord
                 req.sender = self.addr;
                 req.setSrc<NodeInfo>(self);
                 req.buff_key = key;
+                memset(req.file_name, 0, MAX_FILE_NAME_LENGTH);
+                strncpy(req.file_name, file_name, MAX_FILE_NAME_LENGTH-1);
+                socket.write<Request>(req, req.recipient);
+        }
+
+        void LocalNode::read_new( uint32 key, const char* file_name)
+        {
+
+                auto dest  = lookup(key);
+                auto dest_node = dest.get();
+                Request req = makeRequest(
+                        Request::READ_NEW,
+                        dest_node);
+                req.sender = self.addr;
+		req.read_dest = self.addr;
+                req.setSrc<NodeInfo>(self);
+                req.buff_key = key;
+		req.org_src = dest_node.id;
                 memset(req.file_name, 0, MAX_FILE_NAME_LENGTH);
                 strncpy(req.file_name, file_name, MAX_FILE_NAME_LENGTH-1);
                 socket.write<Request>(req, req.recipient);
@@ -933,12 +1007,22 @@ namespace Chord
             		handleWrite(req);
             		break;}
 
+                case Request::WRITE_NEW:{
+			printf("LOG: received WRITE_NEW from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+                        handleWrite_new(req);
+                        break;}
+
                 case Request::READ:{
 			stringstream ss;
                         ss << "received READ from string with id ";
                         ss << *getIpString(req.sender) << ' ' << req.id;
                         Logger::getInstance()->chord_print(LOG_LEVEL_INFO, ss.str(), FILE_LOG);
                         handleRead(req);
+                        break;}
+
+                case Request::READ_NEW:{
+                        printf("LOG: received READ_NEW from %s with id 0x%08x\n", *getIpString(req.sender), req.id);
+                        handleRead_new(req);
                         break;}
 
 		case Request::DELETE:{
@@ -1213,6 +1297,37 @@ namespace Chord
 		}
     	}
 
+        void LocalNode::handleWrite_new(const Request & req)
+        {
+                Request sender{req};
+                Request res{req};
+                char filepath[MAX_FILE_NAME];
+                string filename;
+                strcpy(filepath, "/store/");
+
+                if (0 == req.buff_key)
+		{
+                        filename = string(req.file_name);
+                }
+                else
+		{
+                        filename = to_string(req.buff_key);
+                }
+                strcat(filepath, filename.c_str());
+                ofstream fout(filepath, ios::out | ios::binary);
+                fout.write (&req.file_buff[0], req.buff_size);
+                fout.close();
+		//TODO:DB operation required here (for node addition/deletion)
+                NodeInfo nextNode;
+		bool hasNext = getNextNode(res, nextNode);
+		if (true == hasNext)
+		{
+                        res.sender = self.addr;
+                        res.recipient = nextNode.addr;
+                        socket.write<Request>(res, res.recipient);
+		}
+        }
+
         void LocalNode::handleRead(const Request & req)
         {
                 Request res{req};
@@ -1274,6 +1389,75 @@ namespace Chord
                 res.isRead = true;
                 res.type = Request::WRITE; 
                 socket.write<Request>(res, res.sender);
+        }
+
+        void LocalNode::handleRead_new(const Request & req)
+        {
+                Request res{req};
+                char file_name[MAX_FILE_NAME];
+                strcpy(file_name,"/store/");
+                string name = to_string(req.buff_key);
+                if (0 != req.buff_key)
+		{
+                        strcat(file_name, name.c_str());
+                }
+		else
+		{
+                        strcat(file_name, req.file_name);
+                }
+                int file_size = 0;
+                char logbuffer[1024];
+                const string s= logbuffer;
+                sprintf(logbuffer," %u %s",req.buff_key,file_name);
+                Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG,
+				"handleRead_new key,file_name, req.buff_key "
+				+ std::string(logbuffer), FILE_LOG);
+                ifstream fin(file_name, ios::in | ios::binary );
+                if (!fin)
+                {
+                        strcat(file_name, name.c_str());
+                        fin.open(file_name, ios::in | ios::binary );
+                        if (!fin)
+                        {
+                                strcat(file_name, name.c_str());
+                                fin.open(file_name, ios::in | ios::binary );
+                        }
+
+                }
+                if (fin)
+                {
+                        fin.seekg(0, ios::end);
+                        file_size = fin.tellg();
+                        printf("File Size = %d", file_size);
+                        fin.seekg(0, ios::beg);
+                        if (MAX_FILE_SIZE >= file_size) {
+                                fin.read(&res.file_buff[0], file_size);
+                                res.buff_size = file_size;
+                                res.isRead = true;
+                                res.type = Request::WRITE;
+                                socket.write<Request>(res, res.read_dest);
+                        }
+                        else
+                        {
+                                Logger::getInstance()->chord_print(LOG_LEVEL_ERROR,
+				      "File is larger than the max allowed size\n", FILE_LOG);
+                        }
+                        fin.close();
+                }
+                else     //File is not present in the Node
+                {
+                        Logger::getInstance()->chord_print(LOG_LEVEL_ERROR, 
+					"File is not present in /store/\n", FILE_LOG);
+			NodeInfo nextNode;
+                        bool hasNext = getNextNode(res, nextNode);
+                        if (true == hasNext)
+                        {
+                                res.sender = self.addr;
+                                res.recipient = nextNode.addr;
+                                socket.write<Request>(res, res.recipient);
+                        }
+                }
+
         }
 
 	void LocalNode::handleDelete(const Request & req)
