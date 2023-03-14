@@ -255,7 +255,8 @@ namespace Chord
 		{
 			printf("i:%d FileKey:%d,fileFingerKey:%d,fileFingerKeyOffset:%d\n",
 					i, req.buff_key, fileFingerKey, fileFingerKeyOffset);
-			nextNode = findSuccessor(fileFingerKey);
+		        auto dest  = lookup(fileFingerKey);
+                        nextNode = dest.get();
 			if ((id != nextNode.id) && (req.org_src != nextNode.id))
 			{
 				printf("Got Node:id=%d, nextNode.id=%d, req.org_src=%d\n",
