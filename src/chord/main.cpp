@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <filesystem>
 #include <signal.h>
 #include "crypto/sha1.h"
 #include "crypto/sha1.h"
@@ -109,12 +110,23 @@ int32 main(int32 argc, char ** argv)
                         cin >> path;
 
                         char *buffer = NULL;
+			char *keyBuff = NULL;
                         char query[100] = "\0";
 			Chord::NodeInfo temp;
                         int file_size = 0, flag=0;
                         uint32 hash[5], key;
                         string pathstr = string(path);
                         string fileName = pathstr.substr(pathstr.find_last_of("/\\") + 1);
+			string inputKey;
+			if (fileName == pathstr)
+			{
+                                std::filesystem::path cwd = std::filesystem::current_path();
+				inputKey = cwd.string();
+				inputKey = inputKey + "/" + fileName;
+			}
+			else
+				inputKey = pathstr;
+			cout << "inputKey:"<<inputKey<<endl;
 
                         if (dbIns)
                         	flag = dbIns->ifFilePresent((char*)fileName.c_str(), key);
@@ -128,7 +140,8 @@ int32 main(int32 argc, char ** argv)
                         }
                         fin.seekg(0, ios::end);
                         file_size = fin.tellg();
-                        std::cout << "File Size = "<<file_size<<endl;
+                        std::cout << "File Size = "<<file_size<<" File name:"<<fileName<<
+				            " File path:"<<pathstr<<endl;
                         if(buffer = new char[file_size])
                         {
                                 memset(buffer, '0', file_size);
@@ -143,7 +156,15 @@ int32 main(int32 argc, char ** argv)
                                 printf("File is larger than the max allowed size\n");
                                 break;
                         }
-                        Crypto::sha1(buffer, hash);
+
+			int inKeySize = inputKey.size();
+                        if(keyBuff = new char[inKeySize])
+                        {
+                                memset(keyBuff, '0', inKeySize);
+				strcpy(keyBuff, inputKey.c_str());
+                        }
+
+                        Crypto::sha1(keyBuff, hash);
 
         				flag = 1;
         				while (flag)
@@ -156,7 +177,8 @@ int32 main(int32 argc, char ** argv)
 
                         printf("File key: 0x%08x\n", hash[0]);
 
-			localNode.write(hash[0], buffer, file_size, temp); // temp will not be used
+			//localNode.write(hash[0], buffer, file_size, temp); // temp will not be used
+			localNode.write_new(hash[0], buffer, file_size, temp);
 			if (dbIns)
 				flag = dbIns->insertToFileList((char*)fileName.c_str(), hash[0]);
                         }
@@ -199,7 +221,8 @@ int32 main(int32 argc, char ** argv)
 				flag = dbIns->ifFilePresent((char*)fileName.c_str(), key);
 
 			if (flag == 1)
-				localNode.read(key, fileName.c_str());
+				//localNode.read(key, fileName.c_str());
+				localNode.read_new(key, fileName.c_str());
 			break;
 		}
 
