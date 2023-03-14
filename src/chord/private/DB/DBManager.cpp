@@ -249,6 +249,75 @@ int DBManager :: insertToFileList(char* fileName, uint hash)
 	return rs;
 }
 
+bool DBManager :: updatefilecopies(uint& Parent_Key, int File_Copies)
+{
+	int rs = 0;
+	char query[100] = {'\0'};
+	MYSQL *conn = NULL;
+	sprintf(query, "UPDATE `FileList` SET `File_Copies` = '%d' WHERE `Parent_Key` = '%d';", File_Copies, Parent_Key);
+	conn = createMySQLConnection();
+	if(conn != NULL)
+	{
+		rs = mysql_query(conn, query);
+		closeMySQLConnection(conn);
+		conn = NULL;
+	}
+
+	return rs;
+}
+
+int DBManager :: selectfilecopies(char* fileName)
+{
+	int rs = 0;
+	char query[100] = {'\0'};
+	MYSQL *conn = NULL;
+	sprintf(query, "SELECT `File_Copies` FROM `FileList` WHERE `FileName` = '%s';", fileName);
+	conn = createMySQLConnection();
+	if(conn != NULL)
+	{
+		rs = mysql_query(conn, query);
+		closeMySQLConnection(conn);
+		conn = NULL;
+	}
+
+	return rs;
+}
+
+bool DBManager :: insertIntoToFileList(uint& Parent_Key, char* File_Name, int File_Size, int File_Copies)
+{
+        int rs = 0;
+        char query[100] = {'\0'};
+        MYSQL *conn = NULL;
+        sprintf(query, "INSERT INTO `FileList` (`Parent_Key`, `File_Name`, `File_Size`,`File_Copies`) VALUES (%d, '%s', '%d');", Parent_Key, File_Name, File_Size,File_Copies);
+        conn = createMySQLConnection();
+        if(conn != NULL)
+        {
+                rs = mysql_query(conn, query);
+                closeMySQLConnection(conn);
+                conn = NULL;
+        }
+	bool result = ( rs <= 0 ) ? false : true;
+        return result;
+}
+
+bool DBManager :: insertIntoChunkList(uint& Parent_Key, uint& Chunk_Key, char* File_Name, char* Order_Id)
+{
+        int rs = 0;
+        char query[100] = {'\0'};
+        MYSQL *conn = NULL;
+        sprintf(query, "INSERT INTO `ChunkList` (`Parent_Key`, `Chunk_Key`, `File_Name`, `Order_Id`) VALUES (%d, ,%d ,'%s','%s');", Parent_Key, Chunk_Key, File_Name, Order_Id);
+        conn = createMySQLConnection();
+        if(conn != NULL)
+        {
+                rs = mysql_query(conn, query);
+                closeMySQLConnection(conn);
+                conn = NULL;
+        }
+	bool result = ( rs <= 0 ) ? false : true;
+        return result;
+}
+
+
 /******************************************
  * Delete mentioned row from the table here
  ******************************************/

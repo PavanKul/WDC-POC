@@ -39,6 +39,11 @@ public:
 	int insertToFileList(char* fileName, uint hash);
 	int deleteFromFileList(char* fileName);
 	int showFileList();
+	bool insertIntoChunkList(uint& Parent_Key, uint& Chunk_Key, char* File_Name, char* order_Id);
+	bool insertIntoToFileList(uint& Parent_Key, char* File_Name, int File_Size, int File_Copies);
+	bool updatefilecopies(uint& Parent_Key, int File_Copies);
+	int selectfilecopies(char* fileName);
+
 	/*int updateHeartBeatBankDb(RegVerification *reg);
 	int insertDataAlertDb(RegVerification *reg);
 	int insertDataHealthDb(RegVerification *reg);
