@@ -249,39 +249,69 @@ int DBManager :: insertToFileList(char* fileName, uint hash)
 	return rs;
 }
 
+/************************************************
+ * Update number of file copies field in table here
+************************************************/
+
 bool DBManager :: updatefilecopies(uint& Parent_Key, int File_Copies)
 {
 	int rs = 0;
 	char query[100] = {'\0'};
 	MYSQL *conn = NULL;
-	sprintf(query, "UPDATE `FileList` SET `File_Copies` = '%d' WHERE `Parent_Key` = '%d';", File_Copies, Parent_Key);
-	conn = createMySQLConnection();
-	if(conn != NULL)
+	if ( (ifHashPresent(Parent_Key)) != NULL )
 	{
-		rs = mysql_query(conn, query);
+		sprintf(query, "UPDATE `FileList` SET `File_Copies` = '%d' WHERE `Parent_Key` = '%d';", File_Copies, Parent_Key);
+		conn = createMySQLConnection();
+		if(conn != NULL)
+		{
+			rs = mysql_query(conn, query);
+			closeMySQLConnection(conn);
+			conn = NULL;
+		}
+	}
+	else 
+	{
+		fprintf(stderr, "Parent Key '%d' does not exist\n", Parent_Key);
+		fflush(stdout);
 		closeMySQLConnection(conn);
 		conn = NULL;
 	}
-
 	return rs;
 }
+
+/************************************************
+ * Show number of file copies field in table here
+************************************************/
 
 int DBManager :: selectfilecopies(char* fileName)
 {
 	int rs = 0;
+	int num_fields = 0;
 	char query[100] = {'\0'};
 	MYSQL *conn = NULL;
 	sprintf(query, "SELECT `File_Copies` FROM `FileList` WHERE `FileName` = '%s';", fileName);
 	conn = createMySQLConnection();
 	if(conn != NULL)
-	{
 		rs = mysql_query(conn, query);
+	if(!rs)
+	{
+		res = mysql_store_result(conn);
+		num_fields = mysql_num_fields(res);
+		closeMySQLConnection(conn);
+		conn = NULL;
+	}
+	else
+	{
 		closeMySQLConnection(conn);
 		conn = NULL;
 	}
 
-	return rs;
+	return num_fields;
 }
+
+/***********************************************************************
+ * Insert file name, parent key, file size and file copies in file table here
+***********************************************************************/
 
 bool DBManager :: insertIntoToFileList(uint& Parent_Key, char* File_Name, int File_Size, int File_Copies)
 {
@@ -299,6 +329,10 @@ bool DBManager :: insertIntoToFileList(uint& Parent_Key, char* File_Name, int Fi
 	bool result = ( rs <= 0 ) ? false : true;
         return result;
 }
+
+/***********************************************************************
+ * Insert file name, parent key, chunk key and order id in Chunk table here
+ ***********************************************************************/
 
 bool DBManager :: insertIntoChunkList(uint& Parent_Key, uint& Chunk_Key, char* File_Name, char* Order_Id)
 {
