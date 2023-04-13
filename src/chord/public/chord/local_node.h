@@ -8,6 +8,7 @@
 #include "math/uuid_generator.h"
 #include <vector>
 #include "chord/Logger.h"
+#include "DB/DBManager.h"
 
 #define MAX_FILE_NAME 10240
 #define MAX_FILE_NAME_SIZE 296
@@ -75,6 +76,7 @@ namespace Chord
 	public:
 		/// Default constructor
 		LocalNode();
+		~LocalNode();
 		
 		/// Get node public address
 		FORCE_INLINE const Ipv4 & getPublicAddress() const
@@ -357,6 +359,9 @@ namespace Chord
 			return	(a < b && (n >= a && n < b)) ||
 					(a > b && (n >= a || n < b));
 		}
+
+	public:
+		DBManager *dbIns;
 		/// @}
 	};
 } // namespace Chord

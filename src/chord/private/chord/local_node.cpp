@@ -19,9 +19,28 @@ namespace Chord
 		, requestIdGenerator{}
 		, callbacks{}
 		, nextFinger{1U}
+		, dbIns(NULL)
 	{
 		// Initialize node
+		if (dbIns == NULL)
+		dbIns = new DBManager();
+                        if (dbIns)
+                        {
+                                dbIns->initDBManager();
+                        }
+			else
+			{
+				cout<<"DB init failed in local node \n";
+			}
 		init();
+	}
+	LocalNode::~LocalNode()
+	{
+		if (dbIns)
+		{
+			dbIns->releaseMemory();
+			delete dbIns;
+		}
 	}
 
 	bool LocalNode::init()
@@ -50,8 +69,9 @@ namespace Chord
 				fingers[i] = self;
 			stringstream ss;
 			ss << "created node ";
-            		ss << *self.getInfoString();
-            		Logger::getInstance()->chord_print(LOG_LEVEL_INFO, ss.str(), FILE_LOG);
+			ss << *self.getInfoString();
+			Logger::getInstance()->chord_print(LOG_LEVEL_INFO, ss.str(), FILE_LOG);
+
 			return true;
 		}
 
@@ -225,7 +245,7 @@ namespace Chord
                         dest_node = target;
                 }
                 else {
-                        auto dest  = lookup(key);
+			 auto dest  = lookup(key);
                         dest_node = dest.get();
                         sprintf(logbuffer,"%s",*dest.get().getInfoString());
                         Logger::getInstance()->chord_print(LOG_LEVEL_DEBUG, 
@@ -255,8 +275,7 @@ namespace Chord
 		{
 			printf("i:%d FileKey:%d,fileFingerKey:%d,fileFingerKeyOffset:%d\n",
 					i, req.buff_key, fileFingerKey, fileFingerKeyOffset);
-		        auto dest  = lookup(fileFingerKey);
-                        nextNode = dest.get();
+			nextNode = findSuccessor(fileFingerKey);
 			if ((id != nextNode.id) && (req.org_src != nextNode.id))
 			{
 				printf("Got Node:id=%d, nextNode.id=%d, req.org_src=%d\n",
@@ -1600,4 +1619,4 @@ namespace Chord
                 fout.close();
 
         }
-} // namespace Chord
+}// namespace Chord
