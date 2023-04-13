@@ -62,10 +62,7 @@ int32 main(int32 argc, char ** argv)
 	auto receiver = RunnableThread::create(new Chord::ReceiveTask(&localNode), "Receiver");
 	auto updater = RunnableThread::create(new Chord::UpdateTask(&localNode), "Updater");
 
-	DBManager *dbIns = new DBManager();
 	int rs = 0;
-	if (dbIns)
-		rs = dbIns->initDBManager();
 
 	char line[256] = {};
 	printf("User options: \np = Print Info, \nl = Lookup, \nq = Leave node, \
@@ -127,10 +124,8 @@ int32 main(int32 argc, char ** argv)
 			else
 				inputKey = pathstr;
 			cout << "inputKey:"<<inputKey<<endl;
-
-                        if (dbIns)
-                        	flag = dbIns->ifFilePresent((char*)fileName.c_str(), key);
-
+			if (localNode.dbIns)
+				flag = localNode.dbIns->ifFilePresent((char*)fileName.c_str(), key);
                         if (flag == 0) {
 
                         ifstream fin(path, ios::in | ios::binary );
@@ -169,8 +164,8 @@ int32 main(int32 argc, char ** argv)
         				flag = 1;
         				while (flag)
         				{
-        					if (dbIns)
-        						flag = dbIns->ifHashPresent(hash[0]);
+						if (localNode.dbIns)
+							flag = localNode.dbIns->ifHashPresent(hash[0]);
         					if (flag)
         						hash[0] = hash[0] + 10;
         				}
@@ -179,8 +174,8 @@ int32 main(int32 argc, char ** argv)
 
 			//localNode.write(hash[0], buffer, file_size, temp); // temp will not be used
 			localNode.write_new(hash[0], buffer, file_size, temp);
-			if (dbIns)
-				flag = dbIns->insertToFileList((char*)fileName.c_str(), hash[0]);
+			if (localNode.dbIns)
+				flag = localNode.dbIns->insertToFileList((char*)fileName.c_str(), hash[0]);
                         }
                         if (buffer)
                         {
@@ -197,12 +192,12 @@ int32 main(int32 argc, char ** argv)
 			cout << "Enter the filename to delete : ";
 			cin >> fileName;
 			uint32 key = 0;
-			if (dbIns)
-				flag = dbIns->ifFilePresent((char*)fileName.c_str(), key);
+			if (localNode.dbIns)
+				flag = localNode.dbIns->ifFilePresent((char*)fileName.c_str(), key);
 			if (flag == 1) {
 				localNode.deleteFile(key, fileName.c_str());
-				if (dbIns)
-					flag = dbIns->deleteFromFileList((char*)fileName.c_str());
+				if (localNode.dbIns)
+					flag = localNode.dbIns->deleteFromFileList((char*)fileName.c_str());
 			}else
 			{
 				cout<<"The file is not present"<<endl;
@@ -217,9 +212,8 @@ int32 main(int32 argc, char ** argv)
 			cin>>fileName;
 			uint32 key;
 			int flag = 0;
-			if (dbIns)
-				flag = dbIns->ifFilePresent((char*)fileName.c_str(), key);
-
+			if (localNode.dbIns)
+				flag = localNode.dbIns->ifFilePresent((char*)fileName.c_str(), key);
 			if (flag == 1)
 				//localNode.read(key, fileName.c_str());
 				localNode.read_new(key, fileName.c_str());
@@ -228,9 +222,9 @@ int32 main(int32 argc, char ** argv)
 
 		case 's':
 		{
-			cout << "List of files added using this node:\n";
-			if (dbIns)
-				dbIns->showFileList();
+			cout << "List of files present:\n";
+			if (localNode.dbIns)
+				localNode.dbIns->showFileList();
 			break;
 		}
 
@@ -240,10 +234,9 @@ int32 main(int32 argc, char ** argv)
 			string s = "";
 			cout << "Enter the key or 0 if targetting to successor : " << endl;
 			cin >> key;
-
 			localNode.getFileList(key);
 			break;
-		}		
+		}
 
 		default:
 			break;
